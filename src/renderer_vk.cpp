@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2023 Branimir Karadzic. All rights reserved.
+ * Copyright 2011-2024 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
@@ -277,6 +277,25 @@ VK_IMPORT_DEVICE
 	};
 	BX_STATIC_ASSERT(TextureFormat::Count == BX_COUNTOF(s_textureFormat) );
 
+	struct ImageTest
+	{
+		VkImageType        type;
+		VkImageUsageFlags  usage;
+		VkImageCreateFlags flags;
+		uint32_t           formatCaps[2];
+	};
+
+	static const ImageTest s_imageTest[] =
+	{
+		{ VK_IMAGE_TYPE_2D, VK_IMAGE_USAGE_SAMPLED_BIT,                  0,                                   { BGFX_CAPS_FORMAT_TEXTURE_2D,          BGFX_CAPS_FORMAT_TEXTURE_2D_SRGB   } },
+		{ VK_IMAGE_TYPE_3D, VK_IMAGE_USAGE_SAMPLED_BIT,                  0,                                   { BGFX_CAPS_FORMAT_TEXTURE_3D,          BGFX_CAPS_FORMAT_TEXTURE_3D_SRGB   } },
+		{ VK_IMAGE_TYPE_2D, VK_IMAGE_USAGE_SAMPLED_BIT,                  VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, { BGFX_CAPS_FORMAT_TEXTURE_CUBE,        BGFX_CAPS_FORMAT_TEXTURE_CUBE_SRGB } },
+		{ VK_IMAGE_TYPE_2D, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,         0,                                   { BGFX_CAPS_FORMAT_TEXTURE_FRAMEBUFFER, 0                                  } },
+		{ VK_IMAGE_TYPE_2D, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 0,                                   { BGFX_CAPS_FORMAT_TEXTURE_FRAMEBUFFER, 0                                  } },
+		{ VK_IMAGE_TYPE_2D, VK_IMAGE_USAGE_STORAGE_BIT,                  0,                                   { BGFX_CAPS_FORMAT_TEXTURE_IMAGE_READ,  0                                  } },
+		{ VK_IMAGE_TYPE_2D, VK_IMAGE_USAGE_STORAGE_BIT,                  0,                                   { BGFX_CAPS_FORMAT_TEXTURE_IMAGE_WRITE, 0                                  } },
+	};
+
 	struct LayerInfo
 	{
 		bool m_supported;
@@ -287,8 +306,8 @@ VK_IMPORT_DEVICE
 	{
 		enum Enum
 		{
-			VK_LAYER_LUNARG_standard_validation,
 			VK_LAYER_KHRONOS_validation,
+			VK_LAYER_LUNARG_standard_validation,
 
 			Count
 		};
@@ -303,8 +322,8 @@ VK_IMPORT_DEVICE
 	//
 	static Layer s_layer[] =
 	{
-		{ "VK_LAYER_LUNARG_standard_validation", 1, { false, false }, { false, false } },
 		{ "VK_LAYER_KHRONOS_validation",         1, { false, false }, { false, false } },
+		{ "VK_LAYER_LUNARG_standard_validation", 1, { false, false }, { false, false } },
 		{ "",                                    0, { false, false }, { false, false } },
 	};
 	BX_STATIC_ASSERT(Layer::Count == BX_COUNTOF(s_layer)-1);
@@ -337,15 +356,15 @@ VK_IMPORT_DEVICE
 	{
 		enum Enum
 		{
-			EXT_debug_utils,
-			EXT_debug_report,
-			EXT_memory_budget,
-			KHR_get_physical_device_properties2,
 			EXT_conservative_rasterization,
-			EXT_line_rasterization,
-			EXT_shader_viewport_index_layer,
 			EXT_custom_border_color,
+			EXT_debug_report,
+			EXT_debug_utils,
+			EXT_line_rasterization,
+			EXT_memory_budget,
+			EXT_shader_viewport_index_layer,
 			KHR_draw_indirect_count,
+			KHR_get_physical_device_properties2,
 
 			Count
 		};
@@ -362,15 +381,15 @@ VK_IMPORT_DEVICE
 	//
 	static Extension s_extension[] =
 	{
+		{ "VK_EXT_conservative_rasterization",      1, false, false, true,                                                          Layer::Count },
+		{ "VK_EXT_custom_border_color",             1, false, false, true,                                                          Layer::Count },
+		{ "VK_EXT_debug_report",                    1, false, false, false,                                                         Layer::Count },
 		{ "VK_EXT_debug_utils",                     1, false, false, BGFX_CONFIG_DEBUG_OBJECT_NAME || BGFX_CONFIG_DEBUG_ANNOTATION, Layer::Count },
-		{ "VK_EXT_debug_report",                    1, false, false, false                                                        , Layer::Count },
-		{ "VK_EXT_memory_budget",                   1, false, false, true                                                         , Layer::Count },
-		{ "VK_KHR_get_physical_device_properties2", 1, false, false, true                                                         , Layer::Count },
-		{ "VK_EXT_conservative_rasterization",      1, false, false, true                                                         , Layer::Count },
-		{ "VK_EXT_line_rasterization",              1, false, false, true                                                         , Layer::Count },
-		{ "VK_EXT_shader_viewport_index_layer",     1, false, false, true                                                         , Layer::Count },
-		{ "VK_EXT_custom_border_color",             1, false, false, true                                                         , Layer::Count },
-		{ "VK_KHR_draw_indirect_count",             1, false, false, true                                                         , Layer::Count },
+		{ "VK_EXT_line_rasterization",              1, false, false, true,                                                          Layer::Count },
+		{ "VK_EXT_memory_budget",                   1, false, false, true,                                                          Layer::Count },
+		{ "VK_EXT_shader_viewport_index_layer",     1, false, false, true,                                                          Layer::Count },
+		{ "VK_KHR_draw_indirect_count",             1, false, false, true,                                                          Layer::Count },
+		{ "VK_KHR_get_physical_device_properties2", 1, false, false, true,                                                          Layer::Count },
 	};
 	BX_STATIC_ASSERT(Extension::Count == BX_COUNTOF(s_extension) );
 
@@ -531,34 +550,37 @@ VK_IMPORT_DEVICE
 	};
 	BX_STATIC_ASSERT(VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE == BX_COUNTOF(s_allocScopeName)-1);
 
-	constexpr size_t kMinAlignment = 8;
+	constexpr size_t kMinAlignment = 16;
 
 	static void* VKAPI_PTR allocationFunction(void* _userData, size_t _size, size_t _alignment, VkSystemAllocationScope _allocationScope)
 	{
-		BX_UNUSED(_userData);
-		return bx::alignedAlloc(g_allocator, _size, bx::max(kMinAlignment, _alignment), bx::Location(s_allocScopeName[_allocationScope], 0) );
+		bx::AllocatorI* allocator = (bx::AllocatorI*)_userData;
+		return bx::alignedAlloc(allocator, _size, bx::max(kMinAlignment, _alignment), bx::Location(s_allocScopeName[_allocationScope], 0) );
 	}
 
-	static void* VKAPI_PTR reallocationFunction(void* _userData, void* _original, size_t _size, size_t _alignment, VkSystemAllocationScope _allocationScope)
+	static void* VKAPI_PTR reallocationFunction(void* _userData, void* _ptr, size_t _size, size_t _alignment, VkSystemAllocationScope _allocationScope)
 	{
+		bx::AllocatorI* allocator = (bx::AllocatorI*)_userData;
+
 		BX_UNUSED(_userData);
-		if (_size == 0) {
-			bx::alignedFree(g_allocator, _original, 0);
+		if (0 == _size)
+		{
+			bx::alignedFree(allocator, _ptr, 0);
 			return NULL;
 		}
-		return bx::alignedRealloc(g_allocator, _original, _size, bx::max(kMinAlignment, _alignment), bx::Location(s_allocScopeName[_allocationScope], 0) );
+
+		return bx::alignedRealloc(allocator, _ptr, _size, bx::max(kMinAlignment, _alignment), bx::Location(s_allocScopeName[_allocationScope], 0) );
 	}
 
-	static void VKAPI_PTR freeFunction(void* _userData, void* _memory)
+	static void VKAPI_PTR freeFunction(void* _userData, void* _ptr)
 	{
-		BX_UNUSED(_userData);
-
-		if (NULL == _memory)
+		if (NULL == _ptr)
 		{
 			return;
 		}
 
-		bx::alignedFree(g_allocator, _memory, 0);
+		bx::AllocatorI* allocator = (bx::AllocatorI*)_userData;
+		bx::alignedFree(allocator, _ptr, kMinAlignment);
 	}
 
 	static void VKAPI_PTR internalAllocationNotification(void* _userData, size_t _size, VkInternalAllocationType _allocationType, VkSystemAllocationScope _allocationScope)
@@ -636,26 +658,17 @@ VK_IMPORT_DEVICE
 	};
 
 	VkBool32 VKAPI_PTR debugReportCb(
-		VkDebugReportFlagsEXT _flags,
-		VkDebugReportObjectTypeEXT _objectType,
-		uint64_t _object,
-		size_t _location,
-		int32_t _messageCode,
-		const char* _layerPrefix,
-		const char* _message,
-		void* _userData
-	)
+		  VkDebugReportFlagsEXT _flags
+		, VkDebugReportObjectTypeEXT _objectType
+		, uint64_t _object
+		, size_t _location
+		, int32_t _messageCode
+		, const char* _layerPrefix
+		, const char* _message
+		, void* _userData
+		)
 	{
-		BX_UNUSED(_flags
-			, _objectType
-			, _object
-			, _location
-			, _messageCode
-			, _layerPrefix
-			, _message
-			, _userData
-			, s_debugReportObjectType
-		);
+		BX_UNUSED(_flags, _objectType, _object, _location, _messageCode, _layerPrefix, _message, _userData, s_debugReportObjectType);
 
 		// For more info about 'VUID-VkSwapchainCreateInfoKHR-imageExtent-01274'
 		// check https://github.com/KhronosGroup/Vulkan-Docs/issues/1144
@@ -666,6 +679,7 @@ VK_IMPORT_DEVICE
 		{
 			return VK_FALSE;
 		}
+
 		BX_TRACE("%c%c%c%c%c %19s, %s, %d: %s"
 			, 0 != (_flags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT        ) ? 'I' : '-'
 			, 0 != (_flags & VK_DEBUG_REPORT_WARNING_BIT_EXT            ) ? 'W' : '-'
@@ -677,6 +691,7 @@ VK_IMPORT_DEVICE
 			, _messageCode
 			, _message
 			);
+
 		return VK_FALSE;
 	}
 
@@ -774,6 +789,7 @@ VK_IMPORT_DEVICE
 					, layerProperties[layer].implementationVersion
 					, layerProperties[layer].description
 					);
+
 				uint32_t numExtensionProperties;
 				result = enumerateExtensionProperties(_physicalDevice
 					, layerProperties[layer].layerName
@@ -793,7 +809,7 @@ VK_IMPORT_DEVICE
 
 					for (uint32_t extension = 0; extension < numExtensionProperties; ++extension)
 					{
-						bool supported = updateExtension(
+						const bool supported = updateExtension(
 							  extensionProperties[extension].extensionName
 							, extensionProperties[extension].specVersion
 							, VK_NULL_HANDLE == _physicalDevice
@@ -1077,7 +1093,8 @@ VK_IMPORT_DEVICE
 		imb.subresourceRange.levelCount     = _levelCount;
 		imb.subresourceRange.baseArrayLayer = _baseArrayLayer;
 		imb.subresourceRange.layerCount     = _layerCount;
-		vkCmdPipelineBarrier(_commandBuffer
+		vkCmdPipelineBarrier(
+			  _commandBuffer
 			, srcStageMask
 			, dstStageMask
 			, 0
@@ -1161,7 +1178,7 @@ VK_IMPORT_DEVICE
 #elif BX_PLATFORM_ANDROID
 				"libvulkan.so"
 #elif BX_PLATFORM_OSX
-				"libvulkan.dylib"
+				"libMoltenVK.dylib"
 #else
 				"libvulkan.so.1"
 #endif // BX_PLATFORM_*
@@ -1214,7 +1231,6 @@ VK_IMPORT
 				}
 
 				uint32_t numEnabledLayers = 0;
-
 				const char* enabledLayer[Layer::Count];
 
 				BX_TRACE("Enabled instance layers:");
@@ -1230,22 +1246,15 @@ VK_IMPORT
 						BX_TRACE("\t%s", layer.m_name);
 					}
 				}
-#if BX_PLATFORM_OSX || defined(WL_EGL_PLATFORM)
-				uint32_t numEnabledExtensions = headless ? 0 : 3;
 
-				const char* enabledExtension[Extension::Count + 3] =
-#else
-				uint32_t numEnabledExtensions = headless ? 0 : 2;
+				uint32_t numEnabledExtensions = 0;
+				const char* enabledExtension[Extension::Count + 2];
 
-				const char* enabledExtension[Extension::Count + 2] =
-#endif
+				if (!headless)
 				{
-					VK_KHR_SURFACE_EXTENSION_NAME,
-					KHR_SURFACE_EXTENSION_NAME,
-#if BX_PLATFORM_OSX
-					VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
-#endif
-				};
+					enabledExtension[numEnabledExtensions++] = VK_KHR_SURFACE_EXTENSION_NAME;
+					enabledExtension[numEnabledExtensions++] = KHR_SURFACE_EXTENSION_NAME;
+				}
 
 				for (uint32_t ii = 0; ii < Extension::Count; ++ii)
 				{
@@ -1253,8 +1262,7 @@ VK_IMPORT
 					const LayerInfo& layerInfo = s_layer[extension.m_layer].m_instance;
 
 					const bool layerEnabled = false
-						|| extension.m_layer == Layer::Count
-						|| (layerInfo.m_supported && layerInfo.m_initialize)
+						|| extension.m_layer == Layer::Count  || (layerInfo.m_supported && layerInfo.m_initialize)
 						;
 
 					if (extension.m_supported
@@ -1306,11 +1314,9 @@ VK_IMPORT
 				VkInstanceCreateInfo ici;
 				ici.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 				ici.pNext = NULL;
-#if BX_PLATFORM_OSX
-				ici.flags = 0 | VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
-#else
-				ici.flags = 0;
-#endif
+				ici.flags = 0
+					| (BX_ENABLED(BX_PLATFORM_OSX) ? VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR : 0)
+					;
 				ici.pApplicationInfo        = &appInfo;
 				ici.enabledLayerCount       = numEnabledLayers;
 				ici.ppEnabledLayerNames     = enabledLayer;
@@ -1319,6 +1325,7 @@ VK_IMPORT
 
 				if (BX_ENABLED(BGFX_CONFIG_DEBUG) )
 				{
+					s_allocationCb.pUserData = g_allocator;
 					m_allocatorCb = &s_allocationCb;
 					BX_UNUSED(s_allocationCb);
 				}
@@ -1552,25 +1559,25 @@ VK_IMPORT_INSTANCE
 
 				bx::memSet(&m_deviceFeatures, 0, sizeof(m_deviceFeatures) );
 
-				m_deviceFeatures.fullDrawIndexUint32       = supportedFeatures.fullDrawIndexUint32;
-				m_deviceFeatures.imageCubeArray            = supportedFeatures.imageCubeArray            && (_init.capabilities & BGFX_CAPS_TEXTURE_CUBE_ARRAY);
-				m_deviceFeatures.independentBlend          = supportedFeatures.independentBlend          && (_init.capabilities & BGFX_CAPS_BLEND_INDEPENDENT);
-				m_deviceFeatures.multiDrawIndirect         = supportedFeatures.multiDrawIndirect         && (_init.capabilities & BGFX_CAPS_DRAW_INDIRECT);
-				m_deviceFeatures.drawIndirectFirstInstance = supportedFeatures.drawIndirectFirstInstance && (_init.capabilities & BGFX_CAPS_DRAW_INDIRECT);
-				m_deviceFeatures.depthClamp        = supportedFeatures.depthClamp;
-				m_deviceFeatures.fillModeNonSolid  = supportedFeatures.fillModeNonSolid;
-				m_deviceFeatures.largePoints       = supportedFeatures.largePoints;
-				m_deviceFeatures.samplerAnisotropy = supportedFeatures.samplerAnisotropy;
-				m_deviceFeatures.textureCompressionETC2 = supportedFeatures.textureCompressionETC2;
-				m_deviceFeatures.textureCompressionBC   = supportedFeatures.textureCompressionBC;
-				m_deviceFeatures.vertexPipelineStoresAndAtomics = supportedFeatures.vertexPipelineStoresAndAtomics;
-				m_deviceFeatures.fragmentStoresAndAtomics  = supportedFeatures.fragmentStoresAndAtomics;
-				m_deviceFeatures.shaderImageGatherExtended = supportedFeatures.shaderImageGatherExtended;
+				m_deviceFeatures.fullDrawIndexUint32               = supportedFeatures.fullDrawIndexUint32;
+				m_deviceFeatures.imageCubeArray                    = supportedFeatures.imageCubeArray            && (_init.capabilities & BGFX_CAPS_TEXTURE_CUBE_ARRAY);
+				m_deviceFeatures.independentBlend                  = supportedFeatures.independentBlend          && (_init.capabilities & BGFX_CAPS_BLEND_INDEPENDENT);
+				m_deviceFeatures.multiDrawIndirect                 = supportedFeatures.multiDrawIndirect         && (_init.capabilities & BGFX_CAPS_DRAW_INDIRECT);
+				m_deviceFeatures.drawIndirectFirstInstance         = supportedFeatures.drawIndirectFirstInstance && (_init.capabilities & BGFX_CAPS_DRAW_INDIRECT);
+				m_deviceFeatures.depthClamp                        = supportedFeatures.depthClamp;
+				m_deviceFeatures.fillModeNonSolid                  = supportedFeatures.fillModeNonSolid;
+				m_deviceFeatures.largePoints                       = supportedFeatures.largePoints;
+				m_deviceFeatures.samplerAnisotropy                 = supportedFeatures.samplerAnisotropy;
+				m_deviceFeatures.textureCompressionETC2            = supportedFeatures.textureCompressionETC2;
+				m_deviceFeatures.textureCompressionBC              = supportedFeatures.textureCompressionBC;
+				m_deviceFeatures.vertexPipelineStoresAndAtomics    = supportedFeatures.vertexPipelineStoresAndAtomics;
+				m_deviceFeatures.fragmentStoresAndAtomics          = supportedFeatures.fragmentStoresAndAtomics;
+				m_deviceFeatures.shaderImageGatherExtended         = supportedFeatures.shaderImageGatherExtended;
 				m_deviceFeatures.shaderStorageImageExtendedFormats = supportedFeatures.shaderStorageImageExtendedFormats;
-				m_deviceFeatures.shaderClipDistance   = supportedFeatures.shaderClipDistance;
-				m_deviceFeatures.shaderCullDistance   = supportedFeatures.shaderCullDistance;
-				m_deviceFeatures.shaderResourceMinLod = supportedFeatures.shaderResourceMinLod;
-				m_deviceFeatures.geometryShader = supportedFeatures.geometryShader;
+				m_deviceFeatures.shaderClipDistance                = supportedFeatures.shaderClipDistance;
+				m_deviceFeatures.shaderCullDistance                = supportedFeatures.shaderCullDistance;
+				m_deviceFeatures.shaderResourceMinLod              = supportedFeatures.shaderResourceMinLod;
+				m_deviceFeatures.geometryShader                    = supportedFeatures.geometryShader;
 
 				m_lineAASupport = true
 					&& s_extension[Extension::EXT_line_rasterization].m_supported
@@ -1648,83 +1655,63 @@ VK_IMPORT_INSTANCE
 					}
 				}
 
+				for (uint32_t ii = 0; ii < TextureFormat::Count; ++ii)
 				{
-					struct ImageTest
+					uint16_t support = BGFX_CAPS_FORMAT_TEXTURE_NONE;
+
+					const bool depth = bimg::isDepth(bimg::TextureFormat::Enum(ii) );
+					VkFormat fmt = depth
+						? s_textureFormat[ii].m_fmtDsv
+						: s_textureFormat[ii].m_fmt
+						;
+
+					for (uint32_t jj = 0, num = depth ? 1 : 2; jj < num; ++jj)
 					{
-						VkImageType        type;
-						VkImageUsageFlags  usage;
-						VkImageCreateFlags flags;
-						uint32_t           formatCaps[2];
-					};
-
-					const ImageTest imageTest[] =
-					{
-						{ VK_IMAGE_TYPE_2D, VK_IMAGE_USAGE_SAMPLED_BIT,                  0,                                   { BGFX_CAPS_FORMAT_TEXTURE_2D,          BGFX_CAPS_FORMAT_TEXTURE_2D_SRGB   } },
-						{ VK_IMAGE_TYPE_3D, VK_IMAGE_USAGE_SAMPLED_BIT,                  0,                                   { BGFX_CAPS_FORMAT_TEXTURE_3D,          BGFX_CAPS_FORMAT_TEXTURE_3D_SRGB   } },
-						{ VK_IMAGE_TYPE_2D, VK_IMAGE_USAGE_SAMPLED_BIT,                  VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, { BGFX_CAPS_FORMAT_TEXTURE_CUBE,        BGFX_CAPS_FORMAT_TEXTURE_CUBE_SRGB } },
-						{ VK_IMAGE_TYPE_2D, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,         0,                                   { BGFX_CAPS_FORMAT_TEXTURE_FRAMEBUFFER, 0                                  } },
-						{ VK_IMAGE_TYPE_2D, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 0,                                   { BGFX_CAPS_FORMAT_TEXTURE_FRAMEBUFFER, 0                                  } },
-						{ VK_IMAGE_TYPE_2D, VK_IMAGE_USAGE_STORAGE_BIT,                  0,                                   { BGFX_CAPS_FORMAT_TEXTURE_IMAGE_READ,  0                                  } },
-						{ VK_IMAGE_TYPE_2D, VK_IMAGE_USAGE_STORAGE_BIT,                  0,                                   { BGFX_CAPS_FORMAT_TEXTURE_IMAGE_WRITE, 0                                  } },
-					};
-
-					for (uint32_t ii = 0; ii < TextureFormat::Count; ++ii)
-					{
-						uint16_t support = BGFX_CAPS_FORMAT_TEXTURE_NONE;
-
-						const bool depth = bimg::isDepth(bimg::TextureFormat::Enum(ii) );
-						VkFormat fmt = depth
-							? s_textureFormat[ii].m_fmtDsv
-							: s_textureFormat[ii].m_fmt
-							;
-
-						for (uint32_t jj = 0, num = depth ? 1 : 2; jj < num; ++jj)
+						if (VK_FORMAT_UNDEFINED != fmt)
 						{
-							if (VK_FORMAT_UNDEFINED != fmt)
+							for (uint32_t test = 0; test < BX_COUNTOF(s_imageTest); ++test)
 							{
-								for (uint32_t test = 0; test < BX_COUNTOF(imageTest); ++test)
+								const ImageTest& it = s_imageTest[test];
+
+								VkImageFormatProperties ifp;
+								result = vkGetPhysicalDeviceImageFormatProperties(
+									  m_physicalDevice
+									, fmt
+									, it.type
+									, VK_IMAGE_TILING_OPTIMAL
+									, it.usage
+									, it.flags
+									, &ifp
+									);
+
+								if (VK_SUCCESS == result)
 								{
-									const ImageTest& it = imageTest[test];
+									support |= it.formatCaps[jj];
 
-									VkImageFormatProperties ifp;
-									result = vkGetPhysicalDeviceImageFormatProperties(m_physicalDevice
-										, fmt
-										, it.type
-										, VK_IMAGE_TILING_OPTIMAL
-										, it.usage
-										, it.flags
-										, &ifp
-										);
-
-									if (VK_SUCCESS == result)
+									const bool multisample = VK_SAMPLE_COUNT_1_BIT < ifp.sampleCounts;
+									if (it.usage & VK_IMAGE_USAGE_SAMPLED_BIT)
 									{
-										support |= it.formatCaps[jj];
+										support |= 0
+											| BGFX_CAPS_FORMAT_TEXTURE_VERTEX
+											| (multisample ? BGFX_CAPS_FORMAT_TEXTURE_MSAA : 0)
+											;
+									}
 
-										const bool multisample = VK_SAMPLE_COUNT_1_BIT < ifp.sampleCounts;
-										if (it.usage & VK_IMAGE_USAGE_SAMPLED_BIT)
-										{
-											support |= 0
-												| BGFX_CAPS_FORMAT_TEXTURE_VERTEX
-												| (multisample ? BGFX_CAPS_FORMAT_TEXTURE_MSAA : 0)
-												;
-										}
-
-										if (it.usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) )
-										{
-											support |= 0
-												| BGFX_CAPS_FORMAT_TEXTURE_MIP_AUTOGEN
-												| (multisample ? BGFX_CAPS_FORMAT_TEXTURE_FRAMEBUFFER_MSAA : 0)
-												;
-										}
+									if (it.usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) )
+									{
+										support |= 0
+											| BGFX_CAPS_FORMAT_TEXTURE_MIP_AUTOGEN
+											| (multisample ? BGFX_CAPS_FORMAT_TEXTURE_FRAMEBUFFER_MSAA : 0)
+											;
 									}
 								}
 							}
-
-							fmt = s_textureFormat[ii].m_fmtSrgb;
 						}
 
-						g_caps.formats[ii] = support;
+						fmt = s_textureFormat[ii].m_fmtSrgb;
 					}
+
+					g_caps.formats[ii] = support;
 				}
 
 				vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &m_memoryProperties);
@@ -1781,7 +1768,6 @@ VK_IMPORT_INSTANCE
 
 			{
 				uint32_t numEnabledLayers = 0;
-
 				const char* enabledLayer[Layer::Count];
 
 				BX_TRACE("Enabled device layers:");
@@ -1797,30 +1783,29 @@ VK_IMPORT_INSTANCE
 						BX_TRACE("\t%s", layer.m_name);
 					}
 				}
-#if BX_PLATFORM_OSX
-				uint32_t numEnabledExtensions = headless ? 1 : 3;
 
-				const char* enabledExtension[Extension::Count + 3] =
-#else
-				uint32_t numEnabledExtensions = headless ? 1 : 2;
+				uint32_t numEnabledExtensions = 0;
+				const char* enabledExtension[Extension::Count + 3];
 
-				const char* enabledExtension[Extension::Count + 2] =
-#endif
+				enabledExtension[numEnabledExtensions++] = VK_KHR_MAINTENANCE1_EXTENSION_NAME;
+
+				if (!headless)
 				{
-					VK_KHR_MAINTENANCE1_EXTENSION_NAME,
-					VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-#if BX_PLATFORM_OSX
-					"VK_KHR_portability_subset",
-#endif
-				};
+					enabledExtension[numEnabledExtensions++] = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
+				}
+
+				if (BX_ENABLED(BX_PLATFORM_OSX) )
+				{
+					enabledExtension[numEnabledExtensions++] = VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME;
+				}
 
 				for (uint32_t ii = 0; ii < Extension::Count; ++ii)
 				{
 					const Extension& extension = s_extension[ii];
 
-					bool layerEnabled = extension.m_layer == Layer::Count ||
-										(s_layer[extension.m_layer].m_device.m_supported &&
-										 s_layer[extension.m_layer].m_device.m_initialize);
+					bool layerEnabled = extension.m_layer == Layer::Count
+						|| (s_layer[extension.m_layer].m_device.m_supported	&& s_layer[extension.m_layer].m_device.m_initialize)
+						;
 
 					if (extension.m_supported
 					&&  extension.m_initialize
@@ -1857,7 +1842,7 @@ VK_IMPORT_INSTANCE
 				dci.ppEnabledLayerNames  = enabledLayer;
 				dci.enabledExtensionCount   = numEnabledExtensions;
 				dci.ppEnabledExtensionNames = enabledExtension;
-				dci.pEnabledFeatures = &m_deviceFeatures;
+				dci.pEnabledFeatures        = &m_deviceFeatures;
 
 				result = vkCreateDevice(
 					  m_physicalDevice
@@ -2060,7 +2045,7 @@ VK_IMPORT_DEVICE
 				{
 					m_gpuTimer.shutdown();
 				}
-				BX_FALLTHROUGH;
+				[[fallthrough]];
 
 			case ErrorState::DescriptorCreated:
 				for (uint32_t ii = 0; ii < m_numFramesInFlight; ++ii)
@@ -2069,19 +2054,19 @@ VK_IMPORT_DEVICE
 				}
 				vkDestroy(m_pipelineCache);
 				vkDestroy(m_descriptorPool);
-				BX_FALLTHROUGH;
+				[[fallthrough]];
 
 			case ErrorState::SwapChainCreated:
 				m_backBuffer.destroy();
-				BX_FALLTHROUGH;
+				[[fallthrough]];
 
 			case ErrorState::CommandQueueCreated:
 				m_cmd.shutdown();
-				BX_FALLTHROUGH;
+				[[fallthrough]];
 
 			case ErrorState::DeviceCreated:
 				vkDestroyDevice(m_device, m_allocatorCb);
-				BX_FALLTHROUGH;
+				[[fallthrough]];
 
 			case ErrorState::InstanceCreated:
 				if (VK_NULL_HANDLE != m_debugReportCallback)
@@ -2090,14 +2075,14 @@ VK_IMPORT_DEVICE
 				}
 
 				vkDestroyInstance(m_instance, m_allocatorCb);
-				BX_FALLTHROUGH;
+				[[fallthrough]];
 
 			case ErrorState::LoadedVulkan1:
 				bx::dlclose(m_vulkan1Dll);
 				m_vulkan1Dll  = NULL;
 				m_allocatorCb = NULL;
 				unloadRenderDoc(m_renderDocDll);
-				BX_FALLTHROUGH;
+				[[fallthrough]];
 
 			case ErrorState::Default:
 				break;
@@ -6617,15 +6602,15 @@ VK_DESTROY
 		{
 		case ErrorState::AttachmentsCreated:
 			releaseAttachments();
-			BX_FALLTHROUGH;
+			[[fallthrough]];
 
 		case ErrorState::SwapChainCreated:
 			releaseSwapChain();
-			BX_FALLTHROUGH;
+			[[fallthrough]];
 
 		case ErrorState::SurfaceCreated:
 			releaseSurface();
-			BX_FALLTHROUGH;
+			[[fallthrough]];
 
 		case ErrorState::Default:
 			break;
@@ -7431,7 +7416,7 @@ VK_DESTROY
 
 			case VK_ERROR_SURFACE_LOST_KHR:
 				m_needToRecreateSurface = true;
-				BX_FALLTHROUGH;
+				[[fallthrough]];
 
 			case VK_ERROR_OUT_OF_DATE_KHR:
 			case VK_SUBOPTIMAL_KHR:
@@ -7482,7 +7467,7 @@ VK_DESTROY
 			{
 			case VK_ERROR_SURFACE_LOST_KHR:
 				m_needToRecreateSurface = true;
-				BX_FALLTHROUGH;
+				[[fallthrough]];
 
 			case VK_ERROR_OUT_OF_DATE_KHR:
 			case VK_SUBOPTIMAL_KHR:
@@ -8462,7 +8447,7 @@ VK_DESTROY
 					{
 						const VertexBufferVK& vb = m_vertexBuffers[compute.m_indirectBuffer.idx];
 
-						uint32_t numDrawIndirect = UINT16_MAX == compute.m_numIndirect
+						uint32_t numDrawIndirect = UINT32_MAX == compute.m_numIndirect
 							? vb.m_size/BGFX_CONFIG_DRAW_INDIRECT_STRIDE
 							: compute.m_numIndirect
 							;
@@ -8778,7 +8763,7 @@ VK_DESTROY
 					{
 						const VertexBufferVK& vb = m_vertexBuffers[draw.m_indirectBuffer.idx];
 						bufferIndirect = vb.m_buffer;
-						numDrawIndirect = UINT16_MAX == draw.m_numIndirect
+						numDrawIndirect = UINT32_MAX == draw.m_numIndirect
 							? vb.m_size / BGFX_CONFIG_DRAW_INDIRECT_STRIDE
 							: draw.m_numIndirect
 							;

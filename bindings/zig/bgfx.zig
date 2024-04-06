@@ -1,4 +1,4 @@
-// Copyright 2011-2023 Branimir Karadzic. All rights reserved.
+// Copyright 2011-2024 Branimir Karadzic. All rights reserved.
 // License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
 
 
@@ -840,9 +840,6 @@ pub const RendererType = enum(c_int) {
     /// AGC
     Agc,
 
-    /// Direct3D 9.0
-    Direct3D9,
-
     /// Direct3D 11.0
     Direct3D11,
 
@@ -866,9 +863,6 @@ pub const RendererType = enum(c_int) {
 
     /// Vulkan
     Vulkan,
-
-    /// WebGPU
-    WebGPU,
 
     Count
 };
@@ -1555,9 +1549,10 @@ pub const Init = extern struct {
     pub const Encoder = opaque {
         /// Sets a debug marker. This allows you to group graphics calls together for easy browsing in
         /// graphics debugging tools.
-        /// <param name="_marker">Marker string.</param>
-        pub inline fn setMarker(self: ?*Encoder, _marker: [*c]const u8) void {
-            return bgfx_encoder_set_marker(self, _marker);
+        /// <param name="_name">Marker name.</param>
+        /// <param name="_len">Marker name length (if length is INT32_MAX, it's expected that _name is zero terminated string.</param>
+        pub inline fn setMarker(self: ?*Encoder, _name: [*c]const u8, _len: i32) void {
+            return bgfx_encoder_set_marker(self, _name, _len);
         }
         /// Set render states for draw primitive.
         /// @remarks
@@ -1776,7 +1771,7 @@ pub const Init = extern struct {
         /// <param name="_num">Number of draws.</param>
         /// <param name="_depth">Depth for sorting.</param>
         /// <param name="_flags">Discard or preserve states. See `BGFX_DISCARD_*`.</param>
-        pub inline fn submitIndirect(self: ?*Encoder, _id: ViewId, _program: ProgramHandle, _indirectHandle: IndirectBufferHandle, _start: u16, _num: u16, _depth: u32, _flags: u8) void {
+        pub inline fn submitIndirect(self: ?*Encoder, _id: ViewId, _program: ProgramHandle, _indirectHandle: IndirectBufferHandle, _start: u32, _num: u32, _depth: u32, _flags: u8) void {
             return bgfx_encoder_submit_indirect(self, _id, _program, _indirectHandle, _start, _num, _depth, _flags);
         }
         /// Submit primitive for rendering with index and instance data info and
@@ -1791,7 +1786,7 @@ pub const Init = extern struct {
         /// <param name="_numMax">Max number of draws.</param>
         /// <param name="_depth">Depth for sorting.</param>
         /// <param name="_flags">Discard or preserve states. See `BGFX_DISCARD_*`.</param>
-        pub inline fn submitIndirectCount(self: ?*Encoder, _id: ViewId, _program: ProgramHandle, _indirectHandle: IndirectBufferHandle, _start: u16, _numHandle: IndexBufferHandle, _numIndex: u32, _numMax: u16, _depth: u32, _flags: u8) void {
+        pub inline fn submitIndirectCount(self: ?*Encoder, _id: ViewId, _program: ProgramHandle, _indirectHandle: IndirectBufferHandle, _start: u32, _numHandle: IndexBufferHandle, _numIndex: u32, _numMax: u32, _depth: u32, _flags: u8) void {
             return bgfx_encoder_submit_indirect_count(self, _id, _program, _indirectHandle, _start, _numHandle, _numIndex, _numMax, _depth, _flags);
         }
         /// Set compute index buffer.
@@ -1855,7 +1850,7 @@ pub const Init = extern struct {
         /// <param name="_start">First element in indirect buffer.</param>
         /// <param name="_num">Number of dispatches.</param>
         /// <param name="_flags">Discard or preserve states. See `BGFX_DISCARD_*`.</param>
-        pub inline fn dispatchIndirect(self: ?*Encoder, _id: ViewId, _program: ProgramHandle, _indirectHandle: IndirectBufferHandle, _start: u16, _num: u16, _flags: u8) void {
+        pub inline fn dispatchIndirect(self: ?*Encoder, _id: ViewId, _program: ProgramHandle, _indirectHandle: IndirectBufferHandle, _start: u32, _num: u32, _flags: u8) void {
             return bgfx_encoder_dispatch_indirect(self, _id, _program, _indirectHandle, _start, _num, _flags);
         }
         /// Discard previously set state for draw or compute call.
@@ -2064,6 +2059,8 @@ pub inline fn getRendererName(_type: RendererType) [*c]const u8 {
 }
 extern fn bgfx_get_renderer_name(_type: RendererType) [*c]const u8;
 
+/// Fill bgfx::Init struct with default values, before using it to initialize the library.
+/// <param name="_init">Pointer to structure to be initialized. See: `bgfx::Init` for more info.</param>
 pub inline fn initCtor(_init: [*c]Init) void {
     return bgfx_init_ctor(_init);
 }
@@ -2407,6 +2404,8 @@ pub inline fn destroyIndirectBuffer(_handle: IndirectBufferHandle) void {
 extern fn bgfx_destroy_indirect_buffer(_handle: IndirectBufferHandle) void;
 
 /// Create shader from memory buffer.
+/// @remarks
+///   Shader binary is obtained by compiling shader offline with shaderc command line tool.
 /// <param name="_mem">Shader binary.</param>
 pub inline fn createShader(_mem: [*c]const Memory) ShaderHandle {
     return bgfx_create_shader(_mem);
@@ -2813,10 +2812,11 @@ extern fn bgfx_set_palette_color_rgba8(_index: u8, _rgba: u32) void;
 ///        +------ view id
 /// <param name="_id">View id.</param>
 /// <param name="_name">View name.</param>
-pub inline fn setViewName(_id: ViewId, _name: [*c]const u8) void {
-    return bgfx_set_view_name(_id, _name);
+/// <param name="_len">View name length (if length is INT32_MAX, it's expected that _name is zero terminated string.</param>
+pub inline fn setViewName(_id: ViewId, _name: [*c]const u8, _len: i32) void {
+    return bgfx_set_view_name(_id, _name, _len);
 }
-extern fn bgfx_set_view_name(_id: ViewId, _name: [*c]const u8) void;
+extern fn bgfx_set_view_name(_id: ViewId, _name: [*c]const u8, _len: i32) void;
 
 /// Set view rectangle. Draw primitive outside view will be clipped.
 /// <param name="_id">View id.</param>
@@ -2943,8 +2943,9 @@ extern fn bgfx_encoder_end(_encoder: ?*Encoder) void;
 
 /// Sets a debug marker. This allows you to group graphics calls together for easy browsing in
 /// graphics debugging tools.
-/// <param name="_marker">Marker string.</param>
-extern fn bgfx_encoder_set_marker(self: ?*Encoder, _marker: [*c]const u8) void;
+/// <param name="_name">Marker name.</param>
+/// <param name="_len">Marker name length (if length is INT32_MAX, it's expected that _name is zero terminated string.</param>
+extern fn bgfx_encoder_set_marker(self: ?*Encoder, _name: [*c]const u8, _len: i32) void;
 
 /// Set render states for draw primitive.
 /// @remarks
@@ -3136,7 +3137,7 @@ extern fn bgfx_encoder_submit_occlusion_query(self: ?*Encoder, _id: ViewId, _pro
 /// <param name="_num">Number of draws.</param>
 /// <param name="_depth">Depth for sorting.</param>
 /// <param name="_flags">Discard or preserve states. See `BGFX_DISCARD_*`.</param>
-extern fn bgfx_encoder_submit_indirect(self: ?*Encoder, _id: ViewId, _program: ProgramHandle, _indirectHandle: IndirectBufferHandle, _start: u16, _num: u16, _depth: u32, _flags: u8) void;
+extern fn bgfx_encoder_submit_indirect(self: ?*Encoder, _id: ViewId, _program: ProgramHandle, _indirectHandle: IndirectBufferHandle, _start: u32, _num: u32, _depth: u32, _flags: u8) void;
 
 /// Submit primitive for rendering with index and instance data info and
 /// draw count from indirect buffers.
@@ -3150,7 +3151,7 @@ extern fn bgfx_encoder_submit_indirect(self: ?*Encoder, _id: ViewId, _program: P
 /// <param name="_numMax">Max number of draws.</param>
 /// <param name="_depth">Depth for sorting.</param>
 /// <param name="_flags">Discard or preserve states. See `BGFX_DISCARD_*`.</param>
-extern fn bgfx_encoder_submit_indirect_count(self: ?*Encoder, _id: ViewId, _program: ProgramHandle, _indirectHandle: IndirectBufferHandle, _start: u16, _numHandle: IndexBufferHandle, _numIndex: u32, _numMax: u16, _depth: u32, _flags: u8) void;
+extern fn bgfx_encoder_submit_indirect_count(self: ?*Encoder, _id: ViewId, _program: ProgramHandle, _indirectHandle: IndirectBufferHandle, _start: u32, _numHandle: IndexBufferHandle, _numIndex: u32, _numMax: u32, _depth: u32, _flags: u8) void;
 
 /// Set compute index buffer.
 /// <param name="_stage">Compute stage.</param>
@@ -3206,7 +3207,7 @@ extern fn bgfx_encoder_dispatch(self: ?*Encoder, _id: ViewId, _program: ProgramH
 /// <param name="_start">First element in indirect buffer.</param>
 /// <param name="_num">Number of dispatches.</param>
 /// <param name="_flags">Discard or preserve states. See `BGFX_DISCARD_*`.</param>
-extern fn bgfx_encoder_dispatch_indirect(self: ?*Encoder, _id: ViewId, _program: ProgramHandle, _indirectHandle: IndirectBufferHandle, _start: u16, _num: u16, _flags: u8) void;
+extern fn bgfx_encoder_dispatch_indirect(self: ?*Encoder, _id: ViewId, _program: ProgramHandle, _indirectHandle: IndirectBufferHandle, _start: u32, _num: u32, _flags: u8) void;
 
 /// Discard previously set state for draw or compute call.
 /// <param name="_flags">Discard or preserve states. See `BGFX_DISCARD_*`.</param>
@@ -3305,11 +3306,12 @@ extern fn bgfx_override_internal_texture(_handle: TextureHandle, _width: u16, _h
 
 /// Sets a debug marker. This allows you to group graphics calls together for easy browsing in
 /// graphics debugging tools.
-/// <param name="_marker">Marker string.</param>
-pub inline fn setMarker(_marker: [*c]const u8) void {
-    return bgfx_set_marker(_marker);
+/// <param name="_name">Marker name.</param>
+/// <param name="_len">Marker name length (if length is INT32_MAX, it's expected that _name is zero terminated string.</param>
+pub inline fn setMarker(_name: [*c]const u8, _len: i32) void {
+    return bgfx_set_marker(_name, _len);
 }
-extern fn bgfx_set_marker(_marker: [*c]const u8) void;
+extern fn bgfx_set_marker(_name: [*c]const u8, _len: i32) void;
 
 /// Set render states for draw primitive.
 /// @remarks
@@ -3586,10 +3588,10 @@ extern fn bgfx_submit_occlusion_query(_id: ViewId, _program: ProgramHandle, _occ
 /// <param name="_num">Number of draws.</param>
 /// <param name="_depth">Depth for sorting.</param>
 /// <param name="_flags">Which states to discard for next draw. See `BGFX_DISCARD_*`.</param>
-pub inline fn submitIndirect(_id: ViewId, _program: ProgramHandle, _indirectHandle: IndirectBufferHandle, _start: u16, _num: u16, _depth: u32, _flags: u8) void {
+pub inline fn submitIndirect(_id: ViewId, _program: ProgramHandle, _indirectHandle: IndirectBufferHandle, _start: u32, _num: u32, _depth: u32, _flags: u8) void {
     return bgfx_submit_indirect(_id, _program, _indirectHandle, _start, _num, _depth, _flags);
 }
-extern fn bgfx_submit_indirect(_id: ViewId, _program: ProgramHandle, _indirectHandle: IndirectBufferHandle, _start: u16, _num: u16, _depth: u32, _flags: u8) void;
+extern fn bgfx_submit_indirect(_id: ViewId, _program: ProgramHandle, _indirectHandle: IndirectBufferHandle, _start: u32, _num: u32, _depth: u32, _flags: u8) void;
 
 /// Submit primitive for rendering with index and instance data info and
 /// draw count from indirect buffers.
@@ -3603,10 +3605,10 @@ extern fn bgfx_submit_indirect(_id: ViewId, _program: ProgramHandle, _indirectHa
 /// <param name="_numMax">Max number of draws.</param>
 /// <param name="_depth">Depth for sorting.</param>
 /// <param name="_flags">Which states to discard for next draw. See `BGFX_DISCARD_*`.</param>
-pub inline fn submitIndirectCount(_id: ViewId, _program: ProgramHandle, _indirectHandle: IndirectBufferHandle, _start: u16, _numHandle: IndexBufferHandle, _numIndex: u32, _numMax: u16, _depth: u32, _flags: u8) void {
+pub inline fn submitIndirectCount(_id: ViewId, _program: ProgramHandle, _indirectHandle: IndirectBufferHandle, _start: u32, _numHandle: IndexBufferHandle, _numIndex: u32, _numMax: u32, _depth: u32, _flags: u8) void {
     return bgfx_submit_indirect_count(_id, _program, _indirectHandle, _start, _numHandle, _numIndex, _numMax, _depth, _flags);
 }
-extern fn bgfx_submit_indirect_count(_id: ViewId, _program: ProgramHandle, _indirectHandle: IndirectBufferHandle, _start: u16, _numHandle: IndexBufferHandle, _numIndex: u32, _numMax: u16, _depth: u32, _flags: u8) void;
+extern fn bgfx_submit_indirect_count(_id: ViewId, _program: ProgramHandle, _indirectHandle: IndirectBufferHandle, _start: u32, _numHandle: IndexBufferHandle, _numIndex: u32, _numMax: u32, _depth: u32, _flags: u8) void;
 
 /// Set compute index buffer.
 /// <param name="_stage">Compute stage.</param>
@@ -3683,10 +3685,10 @@ extern fn bgfx_dispatch(_id: ViewId, _program: ProgramHandle, _numX: u32, _numY:
 /// <param name="_start">First element in indirect buffer.</param>
 /// <param name="_num">Number of dispatches.</param>
 /// <param name="_flags">Discard or preserve states. See `BGFX_DISCARD_*`.</param>
-pub inline fn dispatchIndirect(_id: ViewId, _program: ProgramHandle, _indirectHandle: IndirectBufferHandle, _start: u16, _num: u16, _flags: u8) void {
+pub inline fn dispatchIndirect(_id: ViewId, _program: ProgramHandle, _indirectHandle: IndirectBufferHandle, _start: u32, _num: u32, _flags: u8) void {
     return bgfx_dispatch_indirect(_id, _program, _indirectHandle, _start, _num, _flags);
 }
-extern fn bgfx_dispatch_indirect(_id: ViewId, _program: ProgramHandle, _indirectHandle: IndirectBufferHandle, _start: u16, _num: u16, _flags: u8) void;
+extern fn bgfx_dispatch_indirect(_id: ViewId, _program: ProgramHandle, _indirectHandle: IndirectBufferHandle, _start: u32, _num: u32, _flags: u8) void;
 
 /// Discard previously set state for draw or compute call.
 /// <param name="_flags">Draw/compute states to discard.</param>

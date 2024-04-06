@@ -1,5 +1,5 @@
 --
--- Copyright 2010-2023 Branimir Karadzic. All rights reserved.
+-- Copyright 2010-2024 Branimir Karadzic. All rights reserved.
 -- License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
 --
 
@@ -560,7 +560,6 @@ project "shaderc"
 		path.join(BIMG_DIR, "include"),
 		path.join(BGFX_DIR, "include"),
 
-		path.join(BGFX_DIR, "3rdparty/webgpu/include"),
 		path.join(BGFX_DIR, "3rdparty/dxsdk/include"),
 
 		FCPP_DIR,

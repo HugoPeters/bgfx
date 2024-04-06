@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2023 Branimir Karadzic. All rights reserved.
+ * Copyright 2011-2024 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
@@ -7,7 +7,7 @@
 
 #if ENTRY_CONFIG_USE_SDL
 
-#if BX_PLATFORM_LINUX || BX_PLATFORM_BSD
+#if BX_PLATFORM_LINUX
 #	if ENTRY_CONFIG_USE_WAYLAND
 #		include <wayland-egl.h>
 #	endif
@@ -48,7 +48,7 @@ namespace entry
 			return NULL;
 		}
 
-#	if BX_PLATFORM_LINUX || BX_PLATFORM_BSD
+#	if BX_PLATFORM_LINUX
 #		if ENTRY_CONFIG_USE_WAYLAND
 			if (wmi.subsystem == SDL_SYSWM_WAYLAND)
 				{
@@ -81,7 +81,7 @@ namespace entry
 	{
 		if(!_window)
 			return;
-#	if BX_PLATFORM_LINUX || BX_PLATFORM_BSD
+#	if BX_PLATFORM_LINUX
 #		if ENTRY_CONFIG_USE_WAYLAND
 		wl_egl_window *win_impl = (wl_egl_window*)SDL_GetWindowData(_window, "wl_egl_window");
 		if(win_impl)
@@ -1148,7 +1148,7 @@ namespace entry
 		{
 			return NULL;
 		}
-#	if BX_PLATFORM_LINUX || BX_PLATFORM_BSD
+#	if BX_PLATFORM_LINUX
 #		if ENTRY_CONFIG_USE_WAYLAND
 			if (wmi.subsystem == SDL_SYSWM_WAYLAND)
 				return wmi.info.wl.display;
@@ -1160,21 +1160,25 @@ namespace entry
 #	endif // BX_PLATFORM_*
 	}
 
-	bgfx::NativeWindowHandleType::Enum getNativeWindowHandleType(WindowHandle _handle)
+	bgfx::NativeWindowHandleType::Enum getNativeWindowHandleType()
 	{
 		SDL_SysWMinfo wmi;
 		SDL_VERSION(&wmi.version);
-		if (!SDL_GetWindowWMInfo(s_ctx.m_window[_handle.idx], &wmi) )
+		if (!SDL_GetWindowWMInfo(s_ctx.m_window[kDefaultWindowHandle], &wmi) )
 		{
 			return bgfx::NativeWindowHandleType::Default;
 		}
-#	if BX_PLATFORM_LINUX || BX_PLATFORM_BSD
+#	if BX_PLATFORM_LINUX
 #		if ENTRY_CONFIG_USE_WAYLAND
 		if (wmi.subsystem == SDL_SYSWM_WAYLAND)
+		{
 			return bgfx::NativeWindowHandleType::Wayland;
+		}
 		else
 #		endif // ENTRY_CONFIG_USE_WAYLAND
+		{
 			return bgfx::NativeWindowHandleType::Default;
+		}
 #	else
 		return bgfx::NativeWindowHandleType::Default;
 #	endif // BX_PLATFORM_*
