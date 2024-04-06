@@ -25,6 +25,8 @@
 
 #include <inttypes.h>
 
+#define PRIx64       "I64x"
+
 // Check handle, cannot be bgfx::kInvalidHandle and must be valid.
 #define BGFX_CHECK_HANDLE(_desc, _handleAlloc, _handle) \
 	BX_ASSERT(isValid(_handle)                          \
