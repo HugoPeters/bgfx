@@ -20,6 +20,14 @@ PFN_PIX_GET_THREAD_INFO      bgfx_PIXGetThreadInfo;
 PFN_PIX_EVENTS_REPLACE_BLOCK bgfx_PIXEventsReplaceBlock;
 #endif // BGFX_CONFIG_DEBUG_ANNOTATION && (BX_PLATFORM_WINDOWS || BX_PLATFORM_WINRT)
 
+#if !defined(PRId64) && defined(_MSC_VER)
+#define PRId64 "I64d"
+#define PRIu64 "I64u"
+#elif !defined(PRId64)
+#define PRId64 "lld"
+#define PRIu64 "llu"
+#endif
+
 namespace bgfx { namespace d3d12
 {
 	static char s_viewName[BGFX_CONFIG_MAX_VIEWS][BGFX_CONFIG_MAX_VIEW_NAME];

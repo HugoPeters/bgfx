@@ -7,6 +7,8 @@
 #include <bx/commandline.h>
 #include <bx/filepath.h>
 
+//__pragma(optimize("", off))
+
 #define MAX_TAGS 256
 extern "C"
 {
@@ -301,7 +303,7 @@ namespace bgfx
 		NULL
 	};
 
-	const char* s_uniformTypeName[] =
+	const char* s_uniformTypeName2[] =
 	{
 		"int",  "int",
 		NULL,   NULL,
@@ -309,7 +311,7 @@ namespace bgfx
 		"mat3", "float3x3",
 		"mat4", "float4x4",
 	};
-	BX_STATIC_ASSERT(BX_COUNTOF(s_uniformTypeName) == UniformType::Count*2);
+	BX_STATIC_ASSERT(BX_COUNTOF(s_uniformTypeName2) == UniformType::Count*2);
 
 	static const char* s_allowedVertexShaderInputs[] =
 	{
@@ -339,31 +341,7 @@ namespace bgfx
 		NULL
 	};
 
-	void fatal(const char* _filePath, uint16_t _line, Fatal::Enum _code, const char* _format, ...)
-	{
-		BX_UNUSED(_filePath, _line, _code);
 
-		va_list argList;
-		va_start(argList, _format);
-
-		bx::vprintf(_format, argList);
-
-		va_end(argList);
-
-		abort();
-	}
-
-	void trace(const char* _filePath, uint16_t _line, const char* _format, ...)
-	{
-		BX_UNUSED(_filePath, _line);
-
-		va_list argList;
-		va_start(argList, _format);
-
-		bx::vprintf(_format, argList);
-
-		va_end(argList);
-	}
 	Options::Options()
 		: shaderType(' ')
 		, disasm(false)
@@ -455,31 +433,6 @@ namespace bgfx
 		}
 
 		return _glsl; // centroid, noperspective
-	}
-
-	const char* getUniformTypeName(UniformType::Enum _enum)
-	{
-		uint32_t idx = _enum & ~(kUniformFragmentBit|kUniformSamplerBit);
-		if (idx < UniformType::Count)
-		{
-			return s_uniformTypeName[idx];
-		}
-
-		return "Unknown uniform type?!";
-	}
-
-	UniformType::Enum nameToUniformTypeEnum(const char* _name)
-	{
-		for (uint32_t ii = 0; ii < UniformType::Count*2; ++ii)
-		{
-			if (NULL != s_uniformTypeName[ii]
-			&&  0 == bx::strCmp(_name, s_uniformTypeName[ii]) )
-			{
-				return UniformType::Enum(ii/2);
-			}
-		}
-
-		return UniformType::Count;
 	}
 
 	int32_t writef(bx::WriterI* _writer, const char* _format, ...)
@@ -2927,7 +2880,7 @@ namespace bgfx
 
 } // namespace bgfx
 
-int main(int _argc, const char* _argv[])
-{
-	return bgfx::compileShader(_argc, _argv);
-}
+//int main(int _argc, const char* _argv[])
+//{
+//	return bgfx::compileShader(_argc, _argv);
+//}

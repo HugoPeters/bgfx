@@ -29,29 +29,29 @@ BX_PRAGMA_DIAGNOSTIC_POP()
 namespace bgfx
 {
 	static bx::DefaultAllocator s_allocator;
-	bx::AllocatorI* g_allocator = &s_allocator;
+	bx::AllocatorI* g_allocator2 = &s_allocator;
 
-	struct TinyStlAllocator
+	struct TinyStlAllocator2
 	{
 		static void* static_allocate(size_t _bytes);
 		static void static_deallocate(void* _ptr, size_t /*_bytes*/);
 	};
 
-	void* TinyStlAllocator::static_allocate(size_t _bytes)
+	void* TinyStlAllocator2::static_allocate(size_t _bytes)
 	{
-		return bx::alloc(g_allocator, _bytes);
+		return bx::alloc(g_allocator2, _bytes);
 	}
 
-	void TinyStlAllocator::static_deallocate(void* _ptr, size_t /*_bytes*/)
+	void TinyStlAllocator2::static_deallocate(void* _ptr, size_t /*_bytes*/)
 	{
 		if (NULL != _ptr)
 		{
-			bx::free(g_allocator, _ptr);
+			bx::free(g_allocator2, _ptr);
 		}
 	}
 } // namespace bgfx
 
-#define TINYSTL_ALLOCATOR bgfx::TinyStlAllocator
+#define TINYSTL_ALLOCATOR bgfx::TinyStlAllocator2
 #include <tinystl/allocator.h>
 #include <tinystl/string.h>
 #include <tinystl/unordered_map.h>
