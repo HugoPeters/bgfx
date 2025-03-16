@@ -130,6 +130,7 @@
 #define BGFX_STATE_MSAA                           UINT64_C(0x0100000000000000) //!< Enable MSAA rasterization.
 #define BGFX_STATE_LINEAA                         UINT64_C(0x0200000000000000) //!< Enable line AA rasterization.
 #define BGFX_STATE_CONSERVATIVE_RASTER            UINT64_C(0x0400000000000000) //!< Enable conservative rasterization.
+#define BGFX_STATE_WIREFRAME					  UINT64_C(0x0800000000000000) //!< Enable wireframe rasterization.
 #define BGFX_STATE_NONE                           UINT64_C(0x0000000000000000) //!< No state.
 #define BGFX_STATE_FRONT_CCW                      UINT64_C(0x0000008000000000) //!< Front counter-clockwise (default is clockwise).
 #define BGFX_STATE_BLEND_INDEPENDENT              UINT64_C(0x0000000400000000) //!< Enable blend independent.

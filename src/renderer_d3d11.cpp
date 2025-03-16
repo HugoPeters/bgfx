@@ -2945,10 +2945,12 @@ namespace bgfx { namespace d3d11
 				| BGFX_STATE_MSAA
 				| BGFX_STATE_LINEAA
 				| BGFX_STATE_CONSERVATIVE_RASTER
+				| BGFX_STATE_WIREFRAME
 				;
 			_state |= _wireframe ? BGFX_STATE_PT_LINES : BGFX_STATE_NONE;
 			_state |= _scissor   ? BGFX_STATE_RESERVED_MASK : 0;
 			_state &= ~(m_deviceInterfaceVersion >= 3 ? 0 : BGFX_STATE_CONSERVATIVE_RASTER);
+			_wireframe |= !!(_state & BGFX_STATE_WIREFRAME);
 
 			ID3D11RasterizerState* rs = m_rasterizerStateCache.find(_state);
 			if (NULL == rs)
@@ -6026,6 +6028,7 @@ namespace bgfx { namespace d3d11
 					 | BGFX_STATE_MSAA
 					 | BGFX_STATE_LINEAA
 					 | BGFX_STATE_CONSERVATIVE_RASTER
+					 | BGFX_STATE_WIREFRAME
 					 ) & changedFlags)
 				{
 					if ( (0
@@ -6034,6 +6037,7 @@ namespace bgfx { namespace d3d11
 						 | BGFX_STATE_MSAA
 						 | BGFX_STATE_LINEAA
 						 | BGFX_STATE_CONSERVATIVE_RASTER
+						 | BGFX_STATE_WIREFRAME
 						 ) & changedFlags)
 					{
 						setRasterizerState(newFlags, wireframe, scissorEnabled);
