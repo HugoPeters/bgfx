@@ -8116,6 +8116,8 @@ VK_DESTROY
 		}
 	}
 
+	__pragma(optimize("", off))
+
 	void RendererContextVK::submit(Frame* _render, ClearQuad& _clearQuad, TextVideoMemBlitter& _textVideoMemBlitter)
 	{
 		BX_UNUSED(_clearQuad);
@@ -8178,7 +8180,7 @@ VK_DESTROY
 		VkIndexType currentIndexFormat = VK_INDEX_TYPE_MAX_ENUM;
 		SortKey key;
 		uint16_t view = UINT16_MAX;
-		FrameBufferHandle fbh = { BGFX_CONFIG_MAX_FRAME_BUFFERS };
+		FrameBufferHandle fbh = BGFX_INVALID_HANDLE;
 
 		BlitState bs(_render);
 
