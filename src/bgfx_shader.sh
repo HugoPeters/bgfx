@@ -296,6 +296,21 @@ vec4 bgfxTextureCubeLod(BgfxSamplerCube _sampler, vec3 _coord, float _level)
 	return _sampler.m_texture.SampleLevel(_sampler.m_sampler, _coord, _level);
 }
 
+vec2 bgfxTextureSize(BgfxSamplerCube _sampler, int _lod)
+{
+    vec2 result;
+    float numberOfMipMapLevels;
+
+    _sampler.m_texture.GetDimensions(
+        _lod,
+        result.x,
+        result.y,
+        numberOfMipMapLevels
+    );
+
+    return result;
+}
+
 float bgfxShadowCube(BgfxSamplerCubeShadow _sampler, vec4 _coord)
 {
 	return _sampler.m_texture.SampleCmpLevelZero(_sampler.m_sampler, _coord.xyz, _coord.w);

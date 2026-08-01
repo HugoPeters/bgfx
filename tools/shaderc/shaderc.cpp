@@ -7,7 +7,7 @@
 #include <bx/commandline.h>
 #include <bx/filepath.h>
 
-//__pragma(optimize("", off))
+__pragma(optimize("", off))
 
 #define MAX_TAGS 256
 extern "C"

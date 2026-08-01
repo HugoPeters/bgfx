@@ -3014,13 +3014,16 @@ namespace bgfx
 					VertexBufferHandle handle;
 					_cmdbuf.read(handle);
 
+					VertexLayoutHandle layoutHandle;
+					_cmdbuf.read(layoutHandle);
+
 					uint32_t size;
 					_cmdbuf.read(size);
 
 					uint16_t flags;
 					_cmdbuf.read(flags);
 
-					m_renderCtx->createDynamicVertexBuffer(handle, size, flags);
+					m_renderCtx->createDynamicVertexBuffer(handle, size, layoutHandle, flags);
 				}
 				break;
 

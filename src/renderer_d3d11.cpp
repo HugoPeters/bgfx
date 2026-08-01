@@ -1790,10 +1790,9 @@ namespace bgfx { namespace d3d11
 			m_indexBuffers[_handle.idx].destroy();
 		}
 
-		void createDynamicVertexBuffer(VertexBufferHandle _handle, uint32_t _size, uint16_t _flags) override
+		void createDynamicVertexBuffer(VertexBufferHandle _handle, uint32_t _size, VertexLayoutHandle _layoutHandle, uint16_t _flags) override
 		{
-			VertexLayoutHandle layoutHandle = BGFX_INVALID_HANDLE;
-			m_vertexBuffers[_handle.idx].create(_size, NULL, layoutHandle, _flags);
+			m_vertexBuffers[_handle.idx].create(_size, NULL, _layoutHandle, _flags);
 		}
 
 		void updateDynamicVertexBuffer(VertexBufferHandle _handle, uint32_t _offset, uint32_t _size, const Memory* _mem) override
@@ -3781,7 +3780,7 @@ namespace bgfx { namespace d3d11
 				}
 				else
 				{
-					if (0 == (_flags & BGFX_BUFFER_INDEX32) )
+					if (0 == (_flags & BGFX_BUFFER_INDEX32))
 					{
 						format = DXGI_FORMAT_R16_UINT;
 						stride = 2;
@@ -3791,6 +3790,25 @@ namespace bgfx { namespace d3d11
 						format = DXGI_FORMAT_R32_UINT;
 						stride = 4;
 					}
+				}
+
+				if ((_flags & (BGFX_BUFFER_COMPUTE_WRITE | BGFX_BUFFER_COMPUTE_READ)) != 0)
+				{
+					// create a structured buffer, requires FORMAT_UNKNOWN
+					format = DXGI_FORMAT_UNKNOWN;
+
+					// yeah not great, but if _stride is provided by the vertex layout, we use that
+					// if not, use the stride set above
+					if (_stride != 0)
+						stride = _stride;
+					else
+						_stride = stride;
+
+					desc.StructureByteStride = stride;
+					desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+
+					// remove either VERTEX/INDEX _BUFFER flags
+					desc.BindFlags &= ~(D3D11_BIND_VERTEX_BUFFER | D3D11_BIND_INDEX_BUFFER);
 				}
 			}
 			else

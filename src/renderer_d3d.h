@@ -6,6 +6,9 @@
 #ifndef BGFX_RENDERER_D3D_H_HEADER_GUARD
 #define BGFX_RENDERER_D3D_H_HEADER_GUARD
 
+#include <string>
+#include <windows.h>
+
 #define DX_CHECK_EXTRA_F ""
 #define DX_CHECK_EXTRA_ARGS
 
@@ -64,11 +67,39 @@ namespace bgfx
 	typedef ::IGraphicsUnknown IUnknown;
 #endif // BX_PLATFORM_WINDOWS || BX_PLATFORM_WINRT
 
+	std::string DXErrorToString(HRESULT hr)
+	{
+		char* errorMsg = nullptr;
+
+		FormatMessageA(
+			FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+			nullptr,
+			hr,
+			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+			(LPSTR)&errorMsg,
+			0,
+			nullptr
+		);
+
+		std::string message;
+		if (errorMsg)
+		{
+			message = errorMsg;
+			LocalFree(errorMsg);
+		}
+		else
+		{
+			message = "Unknown error (HRESULT 0x" + std::to_string(static_cast<unsigned long>(hr)) + ")";
+		}
+
+		return message;
+	}
+
 #define _DX_CHECK(_call)                                                                   \
 			BX_MACRO_BLOCK_BEGIN                                                           \
 				HRESULT __hr__ = _call;                                                    \
-				BX_ASSERT(SUCCEEDED(__hr__), #_call " FAILED 0x%08x" DX_CHECK_EXTRA_F "\n" \
-					, (uint32_t)__hr__                                                     \
+				BX_ASSERT(SUCCEEDED(__hr__), #_call " FAILED 0x%08x (%s) " DX_CHECK_EXTRA_F "\n" \
+					, (uint32_t)__hr__, DXErrorToString(__hr__).c_str()					   \
 					DX_CHECK_EXTRA_ARGS                                                    \
 					);                                                                     \
 			BX_MACRO_BLOCK_END

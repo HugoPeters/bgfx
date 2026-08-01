@@ -2242,7 +2242,7 @@ VK_IMPORT_DEVICE
 			m_indexBuffers[_handle.idx].destroy();
 		}
 
-		void createDynamicVertexBuffer(VertexBufferHandle _handle, uint32_t _size, uint16_t _flags) override
+		void createDynamicVertexBuffer(VertexBufferHandle _handle, uint32_t _size, VertexLayoutHandle /*_layoutHandle*/, uint16_t _flags) override
 		{
 			VertexLayoutHandle layoutHandle = BGFX_INVALID_HANDLE;
 			m_vertexBuffers[_handle.idx].create(m_commandBuffer, _size, NULL, layoutHandle, _flags);
@@ -8115,8 +8115,6 @@ VK_DESTROY
 			dst.setImageMemoryBarrier(m_commandBuffer, dstLayouts[item]);
 		}
 	}
-
-	__pragma(optimize("", off))
 
 	void RendererContextVK::submit(Frame* _render, ClearQuad& _clearQuad, TextVideoMemBlitter& _textVideoMemBlitter)
 	{

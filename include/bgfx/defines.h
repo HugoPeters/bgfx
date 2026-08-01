@@ -308,7 +308,7 @@
 	| BGFX_BUFFER_COMPUTE_READ \
 	| BGFX_BUFFER_COMPUTE_WRITE \
 	)
-
+#define BGFX_BUFFER_STRUCTURED                    UINT16_C(0x2000)
 
 #define BGFX_TEXTURE_NONE                         UINT64_C(0x0000000000000000)
 #define BGFX_TEXTURE_MSAA_SAMPLE                  UINT64_C(0x0000000800000000) //!< Texture will be used for MSAA sampling.
