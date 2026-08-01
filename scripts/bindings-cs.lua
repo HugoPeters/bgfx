@@ -3,7 +3,7 @@ local idl = codegen.idl "bgfx.idl"
 
 local csharp_template = [[
 /*
- * Copyright 2011-2024 Branimir Karadzic. All rights reserved.
+ * Copyright 2011-2026 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
@@ -29,7 +29,7 @@ public static partial class bgfx
 
 local csharp_dllname_template = [[
 /*
- * Copyright 2011-2024 Branimir Karadzic. All rights reserved.
+ * Copyright 2011-2026 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
@@ -76,6 +76,8 @@ local function convert_type_0(arg)
 		return arg.ctype:gsub("int32_t", "int")
 	elseif hasPrefix(arg.ctype, "uint16_t") then
 		return arg.ctype:gsub("uint16_t", "ushort")
+	elseif hasPrefix(arg.ctype, "int16_t") then
+		return arg.ctype:gsub("int16_t", "short")
 	elseif hasPrefix(arg.ctype, "bgfx_view_id_t") then
 		return arg.ctype:gsub("bgfx_view_id_t", "ushort")
 	elseif hasPrefix(arg.ctype, "uint8_t") then

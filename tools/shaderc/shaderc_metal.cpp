@@ -1,9 +1,11 @@
 /*
- * Copyright 2011-2024 Branimir Karadzic. All rights reserved.
+ * Copyright 2011-2026 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
 #include "shaderc.h"
+
+#if SHADERC_CONFIG_HAS_GLSLANG
 
 #include <iostream> // std::cout
 
@@ -14,15 +16,16 @@ BX_PRAGMA_DIAGNOSTIC_IGNORED_CLANG_GCC("-Wattributes") // warning: attribute ign
 BX_PRAGMA_DIAGNOSTIC_IGNORED_CLANG_GCC("-Wdeprecated-declarations") // warning: ‘MSLVertexAttr’ is deprecated
 BX_PRAGMA_DIAGNOSTIC_IGNORED_CLANG_GCC("-Wtype-limits") // warning: comparison of unsigned expression in ‘< 0’ is always false
 BX_PRAGMA_DIAGNOSTIC_IGNORED_CLANG_GCC("-Wshadow") // warning: declaration of 'userData' shadows a member of 'glslang::TShader::Includer::IncludeResult'
+#define SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
+#include <spirv_common.hpp>
+#include <spirv_msl.hpp>
+#include <spirv_reflect.hpp>
+
 #define ENABLE_OPT 1
 #include <ShaderLang.h>
 #include <ResourceLimits.h>
 #include <SPIRV/GlslangToSpv.h>
-#include <SPIRV/SPVRemapper.h>
 #include <SPIRV/SpvTools.h>
-#define SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
-#include <spirv_msl.hpp>
-#include <spirv_reflect.hpp>
 #include <spirv-tools/optimizer.hpp>
 BX_PRAGMA_DIAGNOSTIC_POP()
 
@@ -196,8 +199,16 @@ namespace bgfx { namespace metal
 		"a_texcoord5",
 		"a_texcoord6",
 		"a_texcoord7",
+		"a_texcoord8",
+		"a_texcoord9",
+		"a_texcoord10",
+		"a_texcoord11",
+		"a_texcoord12",
+		"a_texcoord13",
+		"a_texcoord14",
+		"a_texcoord15",
 	};
-	BX_STATIC_ASSERT(bgfx::Attrib::Count == BX_COUNTOF(s_attribName) );
+	static_assert(bgfx::Attrib::Count == BX_COUNTOF(s_attribName) );
 
 	bgfx::Attrib::Enum toAttribEnum(const bx::StringView& _name)
 	{
@@ -423,11 +434,11 @@ namespace bgfx { namespace metal
 
 				if (found)
 				{
-					start = bx::uint32_imax(1, line-10);
+					start = bx::max<int32_t>(1, line-10);
 					end   = start + 20;
 				}
 
-				printCode(_code.c_str(), line, start, end, column);
+				printCode(_code.c_str(), bx::satSub<uint32_t>(line, 1u), start, end, column);
 
 				bx::write(_messageWriter, &messageErr, "%s\n", log);
 			}
@@ -602,8 +613,8 @@ namespace bgfx { namespace metal
 				};
 
 				opt.SetMessageConsumer(print_msg_to_stderr);
-
 				opt.RegisterLegalizationPasses();
+				opt.RegisterPerformancePasses();
 
 				spvtools::ValidatorOptions validatorOptions;
 				validatorOptions.SetBeforeHlslLegalization(true);
@@ -752,13 +763,19 @@ namespace bgfx { namespace metal
 					// insert struct member which declares point size, defaulted to 1
 					if ('v' == _options.shaderType)
 					{
-						const bx::StringView xlatMtlMainOut("xlatMtlMain_out\n{");
-						size_t pos = source.find(xlatMtlMainOut.getPtr() );
-
-						if (pos != std::string::npos)
+						if (msl.get_writes_to_point_size())
 						{
-							pos += xlatMtlMainOut.getLength();
-							source.insert(pos, "\n\tfloat bgfx_metal_pointSize [[point_size]] = 1;");
+							if (source.find("[[point_size]]") == std::string::npos)
+							{
+								const bx::StringView xlatMtlMainOut("xlatMtlMain_out\n{");
+								size_t pos = source.find(xlatMtlMainOut.getPtr());
+
+								if (pos != std::string::npos)
+								{
+									pos += xlatMtlMainOut.getLength();
+									source.insert(pos, "\n\tfloat bgfx_metal_pointSize [[point_size]] = 1;");
+								}
+							}
 						}
 					}
 
@@ -817,3 +834,18 @@ namespace bgfx { namespace metal
 	}
 
 } // namespace bgfx
+
+#else // SHADERC_CONFIG_HAS_GLSLANG
+
+namespace bgfx
+{
+	bool compileMetalShader(const Options& _options, uint32_t _version, const std::string& _code, bx::WriterI* _shaderWriter, bx::WriterI* _messageWriter)
+	{
+		BX_UNUSED(_options, _version, _code, _shaderWriter);
+		bx::Error messageErr;
+		bx::write(_messageWriter, &messageErr, "Metal compiler (glslang) is not compiled in.\n");
+		return false;
+	}
+} // namespace bgfx
+
+#endif // SHADERC_CONFIG_HAS_GLSLANG

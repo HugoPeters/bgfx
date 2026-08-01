@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2024 Branimir Karadzic. All rights reserved.
+ * Copyright 2011-2026 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
@@ -329,8 +329,6 @@ public:
 		// Imgui.
 		imguiCreate();
 
-		m_timeOffset = bx::getHPCounter();
-
 		// Get renderer capabilities info.
 		m_caps = bgfx::getCaps();
 
@@ -349,6 +347,8 @@ public:
 
 		cameraSetPosition({ 0.0f, 0.0f, -15.0f });
 		cameraSetVerticalAngle(0.0f);
+
+		m_frameTime.reset();
 	}
 
 	virtual int shutdown() override
@@ -430,6 +430,10 @@ public:
 	{
 		if (!entry::processEvents(m_width, m_height, m_debug, m_reset, &m_mouseState) )
 		{
+			m_frameTime.frame();
+			const float time      = bx::toSeconds<float>(m_frameTime.getDurationTime() );
+			const float deltaTime = bx::toSeconds<float>(m_frameTime.getDeltaTime() );
+
 			imguiBeginFrame(m_mouseState.m_mx
 				, m_mouseState.m_my
 				, (m_mouseState.m_buttons[entry::MouseButton::Left  ] ? IMGUI_MBUT_LEFT   : 0)
@@ -441,15 +445,6 @@ public:
 				);
 
 			showExampleDialog(this);
-
-			int64_t now = bx::getHPCounter();
-			static int64_t last = now;
-			const int64_t frameTime = now - last;
-			last = now;
-			const double freq = double(bx::getHPFrequency() );
-			const float deltaTime = float(frameTime/freq);
-
-			float time = (float)( (now-m_timeOffset)/freq);
 
 			ImGui::SetNextWindowPos(
 				  ImVec2(m_width - m_width / 5.0f - 10.0f, 10.0f)
@@ -557,7 +552,7 @@ public:
 						;
 
 					m_gbufferTex[2] = bgfx::createTexture2D(uint16_t(m_width), uint16_t(m_height), false, 1, depthFormat, BGFX_TEXTURE_RT | tsFlags);
-					gbufferAt[2].init(m_gbufferTex[2]);
+					gbufferAt[2].init(m_gbufferTex[2], bgfx::Access::Write, 0, 1, 0, BGFX_RESOLVE_NONE);
 
 					m_gbuffer = bgfx::createFrameBuffer(BX_COUNTOF(gbufferAt), gbufferAt, true);
 
@@ -890,6 +885,9 @@ public:
 
 			imguiEndFrame();
 
+			// Just flush work, but do not present.
+			bgfx::frame(BGFX_FRAME_FLUSH);
+
 			// Advance to next frame. Rendering thread will be kicked to
 			// process submitted rendering primitives.
 			bgfx::frame();
@@ -958,7 +956,8 @@ public:
 	entry::MouseState m_mouseState;
 
 	const bgfx::Caps* m_caps;
-	int64_t m_timeOffset;
+
+	FrameTime m_frameTime;
 };
 
 } // namespace

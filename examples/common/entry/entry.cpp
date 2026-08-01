@@ -1,9 +1,10 @@
 /*
- * Copyright 2011-2024 Branimir Karadzic. All rights reserved.
+ * Copyright 2011-2026 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
 #include <bx/bx.h>
+#include <bx/commandline.h>
 #include <bx/file.h>
 #include <bx/sort.h>
 #include <bgfx/bgfx.h>
@@ -34,9 +35,8 @@ namespace entry
 	extern bx::AllocatorI* getDefaultAllocator();
 	bx::AllocatorI* g_allocator = getDefaultAllocator();
 
-	typedef bx::StringT<&g_allocator> String;
-
-	static String s_currentDir;
+	using FixedString4096 = bx::FixedStringT<4096>;
+	static FixedString4096 s_currentDir;
 
 	class FileReader : public bx::FileReader
 	{
@@ -45,9 +45,10 @@ namespace entry
 	public:
 		virtual bool open(const bx::FilePath& _filePath, bx::Error* _err) override
 		{
-			String filePath(s_currentDir);
+			FixedString4096 filePath(s_currentDir);
 			filePath.append(_filePath);
-			return super::open(filePath.getPtr(), _err);
+
+			return super::open(filePath.getCPtr(), _err);
 		}
 	};
 
@@ -58,9 +59,9 @@ namespace entry
 	public:
 		virtual bool open(const bx::FilePath& _filePath, bool _append, bx::Error* _err) override
 		{
-			String filePath(s_currentDir);
-			filePath.append(_filePath);
-			return super::open(filePath.getPtr(), _append, _err);
+			bx::FilePath filePath(s_currentDir);
+			filePath.join(_filePath);
+			return super::open(filePath.getCPtr(), _append, _err);
 		}
 	};
 
@@ -185,7 +186,7 @@ BX_PRAGMA_DIAGNOSTIC_POP();
 		"GamepadStart",
 		"GamepadGuide",
 	};
-	BX_STATIC_ASSERT(Key::Count == BX_COUNTOF(s_keyName) );
+	static_assert(Key::Count == BX_COUNTOF(s_keyName) );
 
 	const char* getName(Key::Enum _key)
 	{
@@ -375,7 +376,13 @@ BX_PRAGMA_DIAGNOSTIC_POP();
 	static AppI*    s_apps       = NULL;
 	static uint32_t s_numApps    = 0;
 
+	static char s_restartApp[1024] = { '\0' };
 	static char s_restartArgs[1024] = { '\0' };
+
+	void setRestartArgs(const char* _args)
+	{
+		bx::strCopy(s_restartArgs, BX_COUNTOF(s_restartArgs), _args);
+	}
 
 	static AppI* getCurrentApp(AppI* _set = NULL)
 	{
@@ -408,14 +415,14 @@ BX_PRAGMA_DIAGNOSTIC_POP();
 		{
 			if (2 == _argc)
 			{
-				bx::strCopy(s_restartArgs, BX_COUNTOF(s_restartArgs), getCurrentApp()->getName() );
+				bx::strCopy(s_restartApp, BX_COUNTOF(s_restartApp), getCurrentApp()->getName() );
 				return bx::kExitSuccess;
 			}
 
 			if (0 == bx::strCmp(_argv[2], "next") )
 			{
 				AppI* next = getNextWrap(getCurrentApp() );
-				bx::strCopy(s_restartArgs, BX_COUNTOF(s_restartArgs), next->getName() );
+				bx::strCopy(s_restartApp, BX_COUNTOF(s_restartApp), next->getName() );
 				return bx::kExitSuccess;
 			}
 			else if (0 == bx::strCmp(_argv[2], "prev") )
@@ -426,7 +433,7 @@ BX_PRAGMA_DIAGNOSTIC_POP();
 					prev = app;
 				}
 
-				bx::strCopy(s_restartArgs, BX_COUNTOF(s_restartArgs), prev->getName() );
+				bx::strCopy(s_restartApp, BX_COUNTOF(s_restartApp), prev->getName() );
 				return bx::kExitSuccess;
 			}
 
@@ -434,7 +441,7 @@ BX_PRAGMA_DIAGNOSTIC_POP();
 			{
 				if (0 == bx::strCmp(_argv[2], app->getName() ) )
 				{
-					bx::strCopy(s_restartArgs, BX_COUNTOF(s_restartArgs), app->getName() );
+					bx::strCopy(s_restartApp, BX_COUNTOF(s_restartApp), app->getName() );
 					return bx::kExitSuccess;
 				}
 			}
@@ -455,7 +462,7 @@ BX_PRAGMA_DIAGNOSTIC_POP();
 
 	AppI::AppI(const char* _name, const char* _description, const char* _url)
 	{
-		BX_STATIC_ASSERT(sizeof(AppInternal) <= sizeof(m_internal) );
+		static_assert(sizeof(AppInternal) <= sizeof(m_internal) );
 		s_offset = BX_OFFSETOF(AppI, m_internal);
 
 		AppInternal* ai = (AppInternal*)m_internal;
@@ -532,6 +539,13 @@ BX_PRAGMA_DIAGNOSTIC_POP();
 	{
 		setWindowSize(kDefaultWindowHandle, s_width, s_height);
 
+		bx::FilePath fp(_argv[0]);
+		char title[bx::kMaxFilePath];
+		const bx::StringView exeName(fp.getBaseName() );
+
+		bx::snprintf(title, BX_COUNTOF(title), "%S - %s", &exeName, _app->getName() );
+		setWindowTitle(kDefaultWindowHandle, title);
+
 		_app->init(_argc, _argv, s_width, s_height);
 		bgfx::frame();
 
@@ -541,7 +555,7 @@ BX_PRAGMA_DIAGNOSTIC_POP();
 #else
 		while (_app->update() )
 		{
-			if (0 != bx::strLen(s_restartArgs) )
+			if (0 != bx::strLen(s_restartApp) )
 			{
 				break;
 			}
@@ -595,6 +609,7 @@ BX_PRAGMA_DIAGNOSTIC_POP();
 	int main(int _argc, const char* const* _argv)
 	{
 		//DBG(BX_COMPILER_NAME " / " BX_CPU_NAME " / " BX_ARCH_NAME " / " BX_PLATFORM_NAME);
+		bx::installExceptionHandler();
 
 		s_fileReader = BX_NEW(g_allocator, FileReader);
 		s_fileWriter = BX_NEW(g_allocator, FileWriter);
@@ -643,19 +658,45 @@ restart:
 		}
 
 		int32_t result = bx::kExitSuccess;
-		s_restartArgs[0] = '\0';
+		s_restartApp[0] = '\0';
 		if (0 == s_numApps)
 		{
 			result = ::_main_(_argc, (char**)_argv);
+		}
+		else if (0 != bx::strLen(s_restartArgs) )
+		{
+			char extraArgsBuf[256];
+			bx::strCopy(extraArgsBuf, BX_COUNTOF(extraArgsBuf), s_restartArgs);
+
+			const char* restartArgv[64];
+			int restartArgc = 0;
+
+			if (0 < _argc)
+			{
+				restartArgv[restartArgc++] = _argv[0];
+			}
+
+			char* extraArgv[32];
+			int extraArgc;
+			char tokenBuf[256];
+			uint32_t tokenBufSize = sizeof(tokenBuf);
+			bx::tokenizeCommandLine(extraArgsBuf, tokenBuf, tokenBufSize, extraArgc, extraArgv, BX_COUNTOF(extraArgv) );
+
+			for (int ii = 0; ii < extraArgc && restartArgc < (int)BX_COUNTOF(restartArgv) - 1; ++ii)
+			{
+				restartArgv[restartArgc++] = extraArgv[ii];
+			}
+
+			result = runApp(getCurrentApp(selected), restartArgc, restartArgv);
 		}
 		else
 		{
 			result = runApp(getCurrentApp(selected), _argc, _argv);
 		}
 
-		if (0 != bx::strLen(s_restartArgs) )
+		if (0 != bx::strLen(s_restartApp) )
 		{
-			find = s_restartArgs;
+			find = s_restartApp;
 			goto restart;
 		}
 
@@ -767,6 +808,7 @@ restart:
 						handle  = size->m_handle;
 						_width  = size->m_width;
 						_height = size->m_height;
+						BX_TRACE("Window resize event: %d: %dx%d", handle, _width, _height);
 
 						needReset = true;
 					}
@@ -800,6 +842,7 @@ restart:
 		&&  needReset)
 		{
 			_reset = s_reset;
+			BX_TRACE("bgfx::reset(%d, %d, 0x%x)", _width, _height, _reset);
 			bgfx::reset(_width, _height, _reset);
 			inputSetMouseResolution(uint16_t(_width), uint16_t(_height) );
 		}
@@ -850,7 +893,7 @@ restart:
 			if (NULL != ev)
 			{
 				handle = ev->m_handle;
-				WindowState& win = s_window[handle.idx];
+				WindowState& win = s_window[isValid(handle) ? handle.idx : 0];
 
 				switch (ev->m_type)
 				{
@@ -979,6 +1022,7 @@ restart:
 		if (needReset)
 		{
 			_reset = s_reset;
+			BX_TRACE("bgfx::reset(%d, %d, 0x%x)", s_window[0].m_width, s_window[0].m_height, _reset);
 			bgfx::reset(s_window[0].m_width, s_window[0].m_height, _reset);
 			inputSetMouseResolution(uint16_t(s_window[0].m_width), uint16_t(s_window[0].m_height) );
 		}

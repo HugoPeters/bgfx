@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2024 Branimir Karadzic. All rights reserved.
+ * Copyright 2011-2026 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
@@ -55,7 +55,6 @@ namespace stl = tinystl;
 #include <bx/hash.h>
 #include <bx/math.h>
 #include <bx/timer.h>
-#include <bx/uint32_t.h>
 
 typedef stl::vector<bx::Vec3> Vec3Array;
 
@@ -925,7 +924,7 @@ void help(const char* _error = NULL)
 
 	bx::printf(
 		  "geometryc, bgfx geometry compiler tool, version %d.%d.%d.\n"
-		  "Copyright 2011-2024 Branimir Karadzic. All rights reserved.\n"
+		  "Copyright 2011-2026 Branimir Karadzic. All rights reserved.\n"
 		  "License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE\n\n"
 		, BGFX_GEOMETRYC_VERSION_MAJOR
 		, BGFX_GEOMETRYC_VERSION_MINOR
@@ -1017,7 +1016,7 @@ int main(int _argc, const char* _argv[])
 	bool compress = cmdLine.hasArg('c', "compress");
 
 	cmdLine.hasArg(s_obbSteps, '\0', "obb");
-	s_obbSteps = bx::uint32_min(bx::uint32_max(s_obbSteps, 1), 90);
+	s_obbSteps = bx::min(bx::max(s_obbSteps, 1), 90);
 
 	uint32_t packNormal = 0;
 	cmdLine.hasArg(packNormal, '\0', "packnormal");
@@ -1076,7 +1075,7 @@ int main(int _argc, const char* _argv[])
 
 	delete [] data;
 
-	int64_t now = bx::getHPCounter();
+	const int64_t now = bx::getHPCounter();
 	parseElapsed += now;
 	int64_t convertElapsed = -now;
 
@@ -1443,8 +1442,7 @@ int main(int _argc, const char* _argv[])
 	delete [] indexData;
 	delete [] vertexData;
 
-	now = bx::getHPCounter();
-	convertElapsed += now;
+	convertElapsed += bx::getHPCounter();
 
 	bx::printf("parse %f [s]\ntri reorder %f [s]\nconvert %f [s]\ng %d, p %d, v %d, i %d\n"
 		, double(parseElapsed)/bx::getHPFrequency()

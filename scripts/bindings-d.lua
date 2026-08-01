@@ -9,10 +9,9 @@ local template = [[
 +/
 module bgfx;
 
-import bindbc.bgfx.config;
-
 import bindbc.common.types: c_int64, c_uint64, va_list;
-static import bgfx.fakeenum;
+import bindbc.bgfx.config;
+static import bgfx.impl;
 
 $version
 
@@ -20,10 +19,31 @@ alias ViewID = ushort;
 
 enum invalidHandle(T) = T(ushort.max);
 
-alias ReleaseFn = void function(void* ptr, void* userData);
+alias ReleaseFn = extern(C++) void function(void* ptr, void* userData) nothrow;
 
 $types
-pragma(inline,true) nothrow @nogc pure @safe{
+pragma(inline,true) nothrow @nogc{
+	/**
+	Allocate a buffer to pass to bgfx. Data will be freed inside bgfx.
+	Params:
+		size = Size to allocate.
+	*/
+	MemoryRef alloc(uint size){
+		auto mem = bgfx.impl.alloc(__traits(parameters));
+		return MemoryRef(cast(ubyte[])mem.data[0..mem.size], mem);
+	}
+	/**
+	Allocate a buffer to pass to bgfx and copy `data` into it. Data will be freed inside bgfx.
+	Params:
+		data = Pointer to data to be copied.
+		size = Size of data to be copied.
+	*/
+	MemoryRef copy(const(void)* data, uint size){
+		auto mem = bgfx.impl.copy(__traits(parameters));
+		return MemoryRef(cast(ubyte[])mem.data[0..mem.size], mem);
+	}
+	
+	pure @safe:
 	StateBlend_ blendFuncSeparate(StateBlend_ srcRGB, StateBlend_ dstRGB, StateBlend_ srcA, StateBlend_ dstA){
 		return (srcRGB | ((dstRGB) << 4)) | ((srcA | (dstA << 4)) << 8);
 	}
@@ -89,6 +109,16 @@ pragma(inline,true) nothrow @nogc pure @safe{
 	}
 }
 
+/**
+A wrapper around `Memory` that allows you to mutate its `data`.
+Do not create instances of this struct yourself.
+*/
+struct MemoryRef{
+	ubyte[] data;
+	const(Memory)* memory;
+	alias memory this;
+}
+
 $structs
 mixin(joinFnBinds((){
 	FnBind[] ret = [
@@ -101,9 +131,9 @@ static if(!staticBinding):
 import bindbc.loader;
 
 debug{
-	mixin(makeDynloadFns("Bgfx", makeLibPaths(["bgfx-shared-libDebug", "bgfxDebug", "bgfx"]), [__MODULE__]));
+	mixin(makeDynloadFns("Bgfx", makeLibPaths(["bgfx-shared-libDebug", "bgfxDebug", "bgfx"]), [__MODULE__, "bgfx.impl"]));
 }else{
-	mixin(makeDynloadFns("Bgfx", makeLibPaths(["bgfx-shared-libRelease", "bgfxRelease", "bgfx"]), [__MODULE__]));
+	mixin(makeDynloadFns("Bgfx", makeLibPaths(["bgfx-shared-libRelease", "bgfxRelease", "bgfx"]), [__MODULE__, "bgfx.impl"]));
 }
 ]]
 
@@ -111,7 +141,7 @@ local dKeywords = {"abstract", "alias", "align", "asm", "assert", "auto", "bool"
 
 local function contains(table, val)
 	for i=1,#table do
-		if table[i] == val then 
+		if table[i] == val then
 			return true
 		end
 	end
@@ -136,6 +166,7 @@ local capsRepl = {
 	decrsat = "decrSat", incrsat = "incrSat", revsub = "revSub",
 	linestrip = "lineStrip", tristrip = "triStrip",
 	bstencil = "bStencil", fstencil = "fStencil",
+	Rmask = "RMask",
 }
 
 local function abbrevsToUpper(name)
@@ -247,14 +278,14 @@ local function convSomeType(arg, isFnArg)
 		end
 		type = type:gsub("::Enum", "") --fix enums
 		type = type:gsub("%s+%*", "*") --remove spacing before `*`
-
+		
 		if isFnArg then
 			for _, enum in pairs(enumTypes) do --fix C++ linkage errors
 				if type == enum then
-					type = string.format("bgfx.fakeenum.%s.Enum", enum)
+					type = string.format("bgfx.impl.%s.Enum", enum)
 				else
 					type = (type:gsub("(" .. enum .. ")([^A-Za-z0-9_])", function(s0, s1)
-						return string.format("bgfx.fakeenum.%s.Enum", enum) .. s1
+						return string.format("bgfx.impl.%s.Enum", enum) .. s1
 					end))
 				end
 			end
@@ -413,16 +444,28 @@ local converter = {}
 local yield = coroutine.yield
 local gen = {}
 
-gen.fakeEnumFile = [[
+gen.implFile = [[
 /+
 + ┌==============================┐
 + │ AUTO GENERATED! DO NOT EDIT! │
 + └==============================┘
 +/
-module bgfx.fakeenum;
+///Do NOT import this module! Use the symbols with the same names in `bgfx/package.d` instead.
+module bgfx.impl;
 
-//NOTE: Do NOT use this module! Use the enums with the same names in `bgfx/package.d` instead.
+import bindbc.bgfx.config;
+import bgfx;
+
 package:
+
+mixin(joinFnBinds((){
+	FnBind[] ret = [
+		{q{const(Memory)*}, q{alloc}, q{uint size}, ext: `C++, "bgfx"`},
+		{q{const(Memory)*}, q{copy}, q{const(void)* data, uint size}, ext: `C++, "bgfx"`},
+	];
+	return ret;
+}()));
+
 ]]
 
 function gen.gen()
@@ -455,7 +498,7 @@ function gen.gen()
 					local co = coroutine.create(converter[what])
 					local any
 					while true do
-						local ok, v = coroutine.resume(co, allStructs[object.name], object.name, true, indent:len())
+						local ok, v = coroutine.resume(co, allStructs[object.name], object.name, object.name, true, indent:len())
 						assert(ok, debug.traceback(co, v))
 						if not v then
 							break
@@ -493,7 +536,7 @@ function gen.gen()
 	return r
 end
 
-function converter.structs(st, name, topLvl)
+function converter.structs(st, name, fullyQualifiedName, topLvl)
 	for _, line in ipairs(st.comments) do
 		yield(line)
 	end
@@ -509,7 +552,7 @@ function converter.structs(st, name, topLvl)
 		subN = subN + 1
 		local co = coroutine.create(converter.structs)
 		while true do
-			local ok, v = coroutine.resume(co, subStruct, subStruct.name, false)
+			local ok, v = coroutine.resume(co, subStruct, subStruct.name, name .. "." .. subStruct.name, false)
 			assert(ok, debug.traceback(co, v))
 			if not v then
 				break
@@ -526,7 +569,7 @@ function converter.structs(st, name, topLvl)
 	end
 	
 	if #st.fns > 0 then
-		membersWithFns = membersWithFns .. name .. ", "
+		membersWithFns = membersWithFns .. fullyQualifiedName .. ", "
 		yield("\textern(D) mixin(joinFnBinds((){")
 		yield("\t\tFnBind[] ret = [")
 		for _, line in ipairs(st.fns) do
@@ -536,7 +579,7 @@ function converter.structs(st, name, topLvl)
 		yield("\t\treturn ret;")
 		yield("\t}()));")
 	end
-	
+
 	yield("}")
 end
 
@@ -558,7 +601,7 @@ function converter.types(typ)
 		yield("\tushort idx;")
 		yield("}")
 		--yield(typ.name .. " invalidHandle(){ return " .. typ.name .. "(ushort.max); }")
-	
+		
 	-- For some reason, this has never worked, so I'm commenting it out just in case it does start working suddenly. :P
 	--[[
 	elseif typ.funcptr then
@@ -575,7 +618,7 @@ function converter.types(typ)
 	--]]
 	elseif typ.enum then
 		local typeName = abbrevsToUpper(typ.name:gsub("::Enum", ""))
-		local otherName = string.format("bgfx.fakeenum.%s.Enum", typ.name:gsub("::Enum", ""))
+		local otherName = string.format("bgfx.impl.%s.Enum", typ.name:gsub("::Enum", ""))
 		
 		yield("enum " .. typeName .. ": " .. otherName .. "{")
 		table.insert(enumTypes, typeName)
@@ -604,7 +647,7 @@ function converter.types(typ)
 			end
 		end
 		
-		gen.fakeEnumFile = gen.fakeEnumFile .. string.format([[
+		gen.implFile = gen.implFile .. string.format([[
 extern(C++, "bgfx") package final abstract class %s{
 	enum Enum{
 		%scount
@@ -816,7 +859,7 @@ function converter.funcs(func)
 	if func.class == nil and func.conly == nil and func.cppinline == nil then
 		local extern = "C++, \"bgfx\""
 		local attribs = ""
-		if func.cfunc ~= nil and func.name ~= "init" then --what the is "cfunc" even meant to mean?
+		if (func.cfunc ~= nil and func.name ~= "init") or func.name == "alloc" or func.name == "copy" then --what the is "cfunc" even meant to mean?
 			return
 		end
 		if func.comments ~= nil then

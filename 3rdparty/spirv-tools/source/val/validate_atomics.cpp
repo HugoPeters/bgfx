@@ -183,11 +183,48 @@ spv_result_t AtomicsPass(ValidationState_t& _, const Instruction* inst) {
       if (!_.GetPointerTypeInfo(pointer_type, &data_type, &storage_class)) {
         return _.diag(SPV_ERROR_INVALID_DATA, inst)
                << spvOpcodeString(opcode)
-               << ": expected Pointer to be of type OpTypePointer";
+               << ": expected Pointer to be a pointer type";
+      }
+
+      // If the pointer is an untyped pointer, get the data type elsewhere.
+      if (data_type == 0) {
+        switch (opcode) {
+          case spv::Op::OpAtomicLoad:
+          case spv::Op::OpAtomicExchange:
+          case spv::Op::OpAtomicFAddEXT:
+          case spv::Op::OpAtomicCompareExchange:
+          case spv::Op::OpAtomicCompareExchangeWeak:
+          case spv::Op::OpAtomicIIncrement:
+          case spv::Op::OpAtomicIDecrement:
+          case spv::Op::OpAtomicIAdd:
+          case spv::Op::OpAtomicISub:
+          case spv::Op::OpAtomicSMin:
+          case spv::Op::OpAtomicUMin:
+          case spv::Op::OpAtomicFMinEXT:
+          case spv::Op::OpAtomicSMax:
+          case spv::Op::OpAtomicUMax:
+          case spv::Op::OpAtomicFMaxEXT:
+          case spv::Op::OpAtomicAnd:
+          case spv::Op::OpAtomicOr:
+          case spv::Op::OpAtomicXor:
+            data_type = inst->type_id();
+            break;
+          case spv::Op::OpAtomicFlagTestAndSet:
+          case spv::Op::OpAtomicFlagClear:
+            return _.diag(SPV_ERROR_INVALID_ID, inst)
+                   << "Untyped pointers are not supported by atomic flag "
+                      "instructions";
+            break;
+          case spv::Op::OpAtomicStore:
+            data_type = _.FindDef(inst->GetOperandAs<uint32_t>(3))->type_id();
+            break;
+          default:
+            break;
+        }
       }
 
       // Can't use result_type because OpAtomicStore doesn't have a result
-      if (_.IsIntScalarType(data_type) && _.GetBitWidth(data_type) == 64 &&
+      if (_.IsIntScalarType(data_type, 64) &&
           !_.HasCapability(spv::Capability::Int64Atomics)) {
         return _.diag(SPV_ERROR_INVALID_DATA, inst)
                << spvOpcodeString(opcode)
@@ -198,7 +235,9 @@ spv_result_t AtomicsPass(ValidationState_t& _, const Instruction* inst) {
       if (!IsStorageClassAllowedByUniversalRules(storage_class)) {
         return _.diag(SPV_ERROR_INVALID_DATA, inst)
                << spvOpcodeString(opcode)
-               << ": storage class forbidden by universal validation rules.";
+               << ": Can not be used with storage class "
+               << spvtools::StorageClassToString(storage_class)
+               << " by universal validation rules";
       }
 
       // Then Shader rules
@@ -212,8 +251,10 @@ spv_result_t AtomicsPass(ValidationState_t& _, const Instruction* inst) {
               (storage_class != spv::StorageClass::PhysicalStorageBuffer) &&
               (storage_class != spv::StorageClass::TaskPayloadWorkgroupEXT)) {
             return _.diag(SPV_ERROR_INVALID_DATA, inst)
-                   << _.VkErrorID(4686) << spvOpcodeString(opcode)
-                   << ": Vulkan spec only allows storage classes for atomic to "
+                   << _.VkErrorID(4686) << spvOpcodeString(opcode) << ": "
+                   << spvtools::StorageClassToString(storage_class)
+                   << " is not allowed, the Vulkan spec only allows storage "
+                      "classes for atomic to "
                       "be: Uniform, Workgroup, Image, StorageBuffer, "
                       "PhysicalStorageBuffer or TaskPayloadWorkgroupEXT.";
           }
@@ -298,8 +339,9 @@ spv_result_t AtomicsPass(ValidationState_t& _, const Instruction* inst) {
             (storage_class != spv::StorageClass::CrossWorkgroup) &&
             (storage_class != spv::StorageClass::Generic)) {
           return _.diag(SPV_ERROR_INVALID_DATA, inst)
-                 << spvOpcodeString(opcode)
-                 << ": storage class must be Function, Workgroup, "
+                 << spvOpcodeString(opcode) << ": storage class is "
+                 << spvtools::StorageClassToString(storage_class)
+                 << ", but must be Function, Workgroup, "
                     "CrossWorkGroup or Generic in the OpenCL environment.";
         }
 
@@ -315,7 +357,7 @@ spv_result_t AtomicsPass(ValidationState_t& _, const Instruction* inst) {
       // If result and pointer type are different, need to do special check here
       if (opcode == spv::Op::OpAtomicFlagTestAndSet ||
           opcode == spv::Op::OpAtomicFlagClear) {
-        if (!_.IsIntScalarType(data_type) || _.GetBitWidth(data_type) != 32) {
+        if (!_.IsIntScalarType(data_type, 32)) {
           return _.diag(SPV_ERROR_INVALID_DATA, inst)
                  << spvOpcodeString(opcode)
                  << ": expected Pointer to point to a value of 32-bit integer "
@@ -351,27 +393,6 @@ spv_result_t AtomicsPass(ValidationState_t& _, const Instruction* inst) {
         if (auto error = ValidateMemorySemantics(
                 _, inst, unequal_semantics_index, memory_scope))
           return error;
-
-        // Volatile bits must match for equal and unequal semantics. Previous
-        // checks guarantee they are 32-bit constants, but we need to recheck
-        // whether they are evaluatable constants.
-        bool is_int32 = false;
-        bool is_equal_const = false;
-        bool is_unequal_const = false;
-        uint32_t equal_value = 0;
-        uint32_t unequal_value = 0;
-        std::tie(is_int32, is_equal_const, equal_value) = _.EvalInt32IfConst(
-            inst->GetOperandAs<uint32_t>(equal_semantics_index));
-        std::tie(is_int32, is_unequal_const, unequal_value) =
-            _.EvalInt32IfConst(
-                inst->GetOperandAs<uint32_t>(unequal_semantics_index));
-        if (is_equal_const && is_unequal_const &&
-            ((equal_value & uint32_t(spv::MemorySemanticsMask::Volatile)) ^
-             (unequal_value & uint32_t(spv::MemorySemanticsMask::Volatile)))) {
-          return _.diag(SPV_ERROR_INVALID_ID, inst)
-                 << "Volatile mask setting must match for Equal and Unequal "
-                    "memory semantics";
-        }
       }
 
       if (opcode == spv::Op::OpAtomicStore) {

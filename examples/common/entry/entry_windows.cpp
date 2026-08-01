@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2024 Branimir Karadzic. All rights reserved.
+ * Copyright 2011-2026 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
@@ -7,14 +7,13 @@
 
 #if ENTRY_CONFIG_USE_NATIVE && BX_PLATFORM_WINDOWS
 
-#include <bgfx/platform.h>
+#include <bgfx/bgfx.h>
 
 #include <bx/mutex.h>
 #include <bx/handlealloc.h>
 #include <bx/os.h>
 #include <bx/thread.h>
 #include <bx/timer.h>
-#include <bx/uint32_t.h>
 
 #include <tinystl/allocator.h>
 #include <tinystl/string.h>
@@ -132,7 +131,7 @@ namespace entry
 
 		void update(EventQueue& _eventQueue)
 		{
-			int64_t now = bx::getHPCounter();
+			const int64_t now = bx::getHPCounter();
 			static int64_t next = now;
 
 			if (now < next)
@@ -508,7 +507,7 @@ namespace entry
 			bgfx::renderFrame();
 
 			bx::Thread thread;
-			thread.init(mte.threadFunc, &mte);
+			thread.init(mte.threadFunc, &mte, 0, "Entry Thread");
 			m_init = true;
 
 			m_eventQueue.postSizeEvent(findHandle(m_hwnd[0]), m_width, m_height);
@@ -678,7 +677,7 @@ namespace entry
 							case WMSZ_RIGHT:
 								{
 									float aspectRatio = 1.0f/m_aspectRatio;
-									width  = bx::uint32_max(ENTRY_DEFAULT_WIDTH/4, width);
+									width  = bx::max(ENTRY_DEFAULT_WIDTH/4, width);
 									height = uint32_t(float(width)*aspectRatio);
 								}
 								break;
@@ -686,7 +685,7 @@ namespace entry
 							default:
 								{
 									float aspectRatio = m_aspectRatio;
-									height = bx::uint32_max(ENTRY_DEFAULT_HEIGHT/4, height);
+									height = bx::max(ENTRY_DEFAULT_HEIGHT/4, height);
 									width  = uint32_t(float(height)*aspectRatio);
 								}
 								break;
@@ -851,14 +850,18 @@ namespace entry
 
 						if (utf16[0] >= 0xD800 && utf16[0] <= 0xDBFF) {
 							m_surrogate = utf16[0];
-						} else {
+						}
+						else
+						{
 							int utf16_len;
 							if (utf16[0] >= 0xDC00 && utf16[0] <= 0xDFFF) {
 								utf16[1] = utf16[0];
 								utf16[0] = m_surrogate;
 								m_surrogate = 0;
 								utf16_len = 2;
-							} else {
+							}
+							else
+							{
 								utf16_len = 1;
 							}
 
@@ -986,7 +989,7 @@ namespace entry
 			if (!_windowFrame)
 			{
 				float aspectRatio = 1.0f/m_aspectRatio;
-				width  = bx::uint32_max(ENTRY_DEFAULT_WIDTH/4, width);
+				width  = bx::max(ENTRY_DEFAULT_WIDTH/4, width);
 				height = uint32_t(float(width)*aspectRatio);
 
 				left   = newrect.left+(newrect.right -newrect.left-width)/2;

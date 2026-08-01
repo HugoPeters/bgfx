@@ -28,13 +28,14 @@ Supported rendering backends
 -  Vulkan
 -  WebGL 1.0
 -  WebGL 2.0
+-  WebGPU (Dawn Native only)
 
 Supported Platforms
 ~~~~~~~~~~~~~~~~~~~
 
--  Android (14+)
+-  Android (4.0+) - API 14 or later
 -  iOS/iPadOS/tvOS (16.0+)
--  Linux
+-  Linux (both X11 and Wayland)
 -  macOS (13.0+)
 -  PlayStation 4
 -  RaspberryPi
@@ -46,8 +47,8 @@ Supported Compilers
 ~~~~~~~~~~~~~~~~~~~
 
 -  Clang 11 and above
--  GCC 8 and above
--  VS2019 and above
+-  GCC 11 and above
+-  VS2022 and above
 -  Apple clang 12 and above
 
 Supported Languages
@@ -55,7 +56,8 @@ Supported Languages
 
 -  `C/C++ API documentation <https://bkaradzic.github.io/bgfx/bgfx.html>`__
 -  `Beef API bindings <https://github.com/bkaradzic/bgfx/tree/master/bindings/bf>`__
--  `C# language API bindings #1 <https://github.com/bkaradzic/bgfx/tree/master/bindings/cs>`__
+-  `C# language API bindings <https://github.com/bkaradzic/bgfx/tree/master/bindings/cs>`__
+-  `C3 language API bindings <https://github.com/bkaradzic/bgfx/tree/master/bindings/c3>`__
 -  `D language API bindings <https://github.com/BindBC/bindbc-bgfx>`__
 -  `Go language API bindings <https://github.com/james4k/go-bgfx>`__
 -  `Haskell language API bindings <https://github.com/haskell-game/bgfx>`__
@@ -81,7 +83,7 @@ Contact
  - `GitHub Discussions <https://github.com/bkaradzic/bgfx/discussions>`__
  - `Discord Chat <https://discord.gg/9eMbv7J>`__
  - GitHub `@bkaradzic <https://github.com/bkaradzic>`__
- - Twitter `@bkaradzic <https://twitter.com/bkaradzic>`__
+ - X `@bkaradzic <https://x.com/bkaradzic>`__
 
 Debugging and Profiling
 -----------------------
@@ -231,6 +233,10 @@ Chronological order:
  - Biswapriyo Nath (`@Biswa96 <https://github.com/Biswa96>`__) - GitHub Actions CI.
  - Raziel Alphadios (`@RazielXYZ <https://github.com/RazielXYZ>`__) - Various fixes and improvements.
  - IchorDev (`@IchorDev <https://github.com/ichordev>`__) - Improved D language bindings.
+ - Martijn Courteaux (`@Martijn Courteaux <https://github.com/mcourteaux>`__) - Various fixes and improvements.
+ - Jaziel Guerrero (`@JazielGuerrero <https://github.com/JazielGuerrero>`__) - C3 language bindings.
+ - gamecoder-nz (`@gamecoder-nz <Mhttps://github.com/gamecoder-nz>`__) - "Getting Started with BGFX"
+   tutorial series on Youtube.
 
 and `others <https://github.com/bkaradzic/bgfx/graphs/contributors>`__...
 

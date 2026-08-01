@@ -3,7 +3,7 @@ local idl = codegen.idl "bgfx.idl"
 
 local beef_template = [[
 /*
- * Copyright 2011-2024 Branimir Karadzic. All rights reserved.
+ * Copyright 2011-2026 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
@@ -55,9 +55,11 @@ local function convert_type_0(arg)
 	elseif hasPrefix(arg.ctype, "uint32_t") then
 		return arg.ctype:gsub("uint32_t", "uint32")
 	elseif hasPrefix(arg.ctype, "int32_t") then
-		return arg.ctype:gsub("int32_t", "int")
+		return arg.ctype:gsub("int32_t", "int32")
 	elseif hasPrefix(arg.ctype, "uint16_t") then
 		return arg.ctype:gsub("uint16_t", "uint16")
+	elseif hasPrefix(arg.ctype, "int16_t") then
+		return arg.ctype:gsub("int16_t", "int16")
 	elseif hasPrefix(arg.ctype, "uint8_t") then
 		return arg.ctype:gsub("uint8_t", "uint8")
 	elseif hasPrefix(arg.ctype, "uintptr_t") then

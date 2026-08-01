@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2024 Branimir Karadzic. All rights reserved.
+ * Copyright 2011-2026 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
@@ -8,6 +8,7 @@
 
 #include <string>
 #include <windows.h>
+#include "renderer.h"
 
 #define DX_CHECK_EXTRA_F ""
 #define DX_CHECK_EXTRA_ARGS
@@ -93,6 +94,12 @@ namespace bgfx
 		}
 
 		return message;
+	}
+	
+	inline constexpr uint32_t toPixColor(uint32_t _abgr)
+	{
+		// ABGR -> BGRA
+		return (_abgr >> 8) | (_abgr << 24);
 	}
 
 #define _DX_CHECK(_call)                                                                   \
@@ -182,60 +189,22 @@ namespace bgfx
 	}
 
 	template<typename Ty>
-	class StateCacheT
+	struct StateCacheFuncT<Ty*>
 	{
-	public:
-		void add(uint64_t _key, Ty* _value)
+		static void evict(Ty* _ptr)
 		{
-			invalidate(_key);
-			m_hashMap.insert(stl::make_pair(_key, _value) );
+			DX_RELEASE_W(_ptr, 0);
+		}
+
+		static void validate(Ty* _ptr, uint64_t _key)
+		{
+			BX_UNUSED(_ptr, _key);
 			BX_ASSERT(isGraphicsDebuggerPresent()
-				|| 1 == getRefCount(_value), "Interface ref count %d, hash %" PRIx64 "."
-				, getRefCount(_value)
+				|| 1 == getRefCount(_ptr), "Interface ref count %d, hash %" PRIx64 "."
+				, getRefCount(_ptr)
 				, _key
 				);
 		}
-
-		Ty* find(uint64_t _key)
-		{
-			typename HashMap::iterator it = m_hashMap.find(_key);
-			if (it != m_hashMap.end() )
-			{
-				return it->second;
-			}
-
-			return NULL;
-		}
-
-		void invalidate(uint64_t _key)
-		{
-			typename HashMap::iterator it = m_hashMap.find(_key);
-			if (it != m_hashMap.end() )
-			{
-				DX_RELEASE_W(it->second, 0);
-				m_hashMap.erase(it);
-			}
-		}
-
-		void invalidate()
-		{
-			for (typename HashMap::iterator it = m_hashMap.begin(), itEnd = m_hashMap.end(); it != itEnd; ++it)
-			{
-				DX_CHECK_REFCOUNT(it->second, 1);
-				it->second->Release();
-			}
-
-			m_hashMap.clear();
-		}
-
-		uint32_t getCount() const
-		{
-			return uint32_t(m_hashMap.size() );
-		}
-
-	private:
-		typedef stl::unordered_map<uint64_t, Ty*> HashMap;
-		HashMap m_hashMap;
 	};
 
 	template<>

@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2024 Branimir Karadzic. All rights reserved.
+ * Copyright 2011-2026 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
@@ -17,9 +17,8 @@
 #   define HAS_METAL_SDK
 #endif
 
-#include <bgfx/platform.h>
+#include <bgfx/bgfx.h>
 
-#include <bx/uint32_t.h>
 #include <bx/thread.h>
 
 namespace entry

@@ -12,11 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <stddef.h>
+
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <functional>
 #include <initializer_list>
+#include <iterator>
 #include <limits>
 #include <type_traits>
 #include <vector>
@@ -70,8 +73,8 @@ class EnumSet {
     // 1st enum this bucket can represent.
     T start;
 
-    friend bool operator==(const Bucket& lhs, const Bucket& rhs) {
-      return lhs.start == rhs.start && lhs.data == rhs.data;
+    bool operator==(const Bucket& other) const {
+      return start == other.start && data == other.data;
     }
   };
 

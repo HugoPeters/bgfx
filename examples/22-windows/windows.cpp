@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2024 Branimir Karadzic. All rights reserved.
+ * Copyright 2011-2026 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
@@ -141,11 +141,11 @@ public:
 		// Create program from shaders.
 		m_program = loadProgram("vs_cubes", "fs_cubes");
 
-		m_timeOffset = bx::getHPCounter();
-
 		bx::memSet(m_fbh, 0xff, sizeof(m_fbh) );
 
 		imguiCreate();
+
+		m_frameTime.reset();
 	}
 
 	virtual int shutdown() override
@@ -178,6 +178,9 @@ public:
 	{
 		if (!entry::processWindowEvents(m_state, m_debug, m_reset) )
 		{
+			m_frameTime.frame();
+			const float time = bx::toSeconds<float>(m_frameTime.getDurationTime() );
+
 			entry::MouseState mouseState = m_state.m_mouse;
 
 			if (isValid(m_state.m_handle) )
@@ -203,6 +206,20 @@ public:
 							bgfx::destroy(m_fbh[viewId]);
 							m_fbh[viewId].idx = bgfx::kInvalidHandle;
 						}
+
+						// Before we reattach a SwapChain to the window
+						// we must actually free up the previous one.
+						// The DestroyFrameBuffer command goes in the
+						// cmdPost CommandBuffer, which happens after
+						// the frame. The CreateFrameBuffer command goes
+						// int the cmdPre CommandBuffer, which happens
+						// at the beginning of the frame. Without this
+						// bgfx::frame() call, the creation would happen
+						// before it's destroyed, which would cause
+						// the platform window to have two SwapChains
+						// associated with it.
+						// Ideally, we have an operation of ResizeFrameBuffer.
+						bgfx::frame();
 
 						win.m_nwh    = m_state.m_nwh;
 						win.m_width  = m_state.m_width;
@@ -273,9 +290,7 @@ public:
 				}
 			}
 
-			int64_t now = bx::getHPCounter();
-			float time = (float)( (now-m_timeOffset)/double(bx::getHPFrequency() ) );
-
+			bgfx::dbgTextClear();
 			if (NULL != m_bindings)
 			{
 				bgfx::dbgTextPrintf(0, 1, 0x2f, "Press 'c' to create or 'd' to destroy window.");
@@ -376,7 +391,7 @@ public:
 
 	InputBinding* m_bindings;
 
-	int64_t m_timeOffset;
+	FrameTime m_frameTime;
 };
 
 } // namespace

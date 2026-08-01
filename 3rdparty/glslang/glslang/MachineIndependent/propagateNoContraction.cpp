@@ -174,6 +174,9 @@ bool isArithmeticOperation(glslang::TOperator op)
     case glslang::EOpMatrixTimesMatrix:
 
     case glslang::EOpDot:
+    case glslang::EOpDotPackedEXT:
+    case glslang::EOpDotAccSatEXT:
+    case glslang::EOpDotPackedAccSatEXT:
 
     case glslang::EOpPostIncrement:
     case glslang::EOpPostDecrement:
@@ -685,6 +688,10 @@ protected:
                 potential_precise_node->traverse(this);
             }
             return false;
+        }
+        // If this is an arithmetic operation, marks this node as 'noContraction'.
+        if (isArithmeticOperation(node->getOp())) {
+            node->getWritableType().getQualifier().noContraction = true;
         }
         return true;
     }

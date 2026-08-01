@@ -1,5 +1,5 @@
 --
--- Copyright 2010-2024 Branimir Karadzic. All rights reserved.
+-- Copyright 2010-2026 Branimir Karadzic. All rights reserved.
 -- License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
 --
 
@@ -11,6 +11,143 @@ local GLSLANG        = path.join(BGFX_DIR, "3rdparty/glslang")
 local SPIRV_CROSS    = path.join(BGFX_DIR, "3rdparty/spirv-cross")
 local SPIRV_HEADERS  = path.join(BGFX_DIR, "3rdparty/spirv-headers")
 local SPIRV_TOOLS    = path.join(BGFX_DIR, "3rdparty/spirv-tools")
+local TINT           = path.join(BGFX_DIR, "3rdparty/dawn")
+local D3D4LINUX      = path.join(BGFX_DIR, "3rdparty/d3d4linux")
+
+project "tint-core"
+	kind "StaticLib"
+
+	includedirs {
+		path.join(TINT),
+		path.join(TINT, "src/tint"),
+		path.join(TINT, "third_party/protobuf/src"),
+		path.join(TINT, "third_party/abseil-cpp"),
+		path.join(SPIRV_TOOLS),
+		path.join(SPIRV_TOOLS, "include"),
+		path.join(SPIRV_TOOLS, "include/generated"),
+		path.join(SPIRV_HEADERS, "include"),
+	}
+
+	defines {
+		"TINT_BUILD_GLSL_WRITER=0",
+		"TINT_BUILD_HLSL_WRITER=0",
+		"TINT_BUILD_MSL_WRITER=0",
+		"TINT_BUILD_NULL_WRITER=0",
+
+		"TINT_BUILD_SPV_READER=1",
+		"TINT_BUILD_SPV_WRITER=0",
+
+		"TINT_BUILD_WGSL_READER=0",
+		"TINT_BUILD_WGSL_WRITER=1",
+
+		"TINT_BUILD_IS_LINUX=1",
+		"TINT_BUILD_IS_MAC=0",
+		"TINT_BUILD_IS_WIN=0",
+
+		"TINT_ENABLE_IR_VALIDATION=0",
+	}
+
+	files {
+		path.join(TINT, "src/tint/utils/**.cc"),
+		path.join(TINT, "src/tint/utils/**.h"),
+		path.join(TINT, "src/tint/lang/core/**.cc"),
+		path.join(TINT, "src/tint/lang/core/**.h"),
+		path.join(TINT, "src/tint/lang/null/**.cc"),
+		path.join(TINT, "src/tint/lang/null/**.h"),
+	}
+
+	configuration { "osx*" }
+		buildoptions {
+			"-Wno-unknown-warning-option",
+		}
+
+project "tint-lang"
+	kind "StaticLib"
+
+	includedirs {
+		path.join(TINT),
+		path.join(TINT, "src/tint"),
+		path.join(TINT, "third_party/protobuf/src"),
+		path.join(TINT, "third_party/abseil-cpp"),
+		path.join(SPIRV_TOOLS),
+		path.join(SPIRV_TOOLS, "include"),
+		path.join(SPIRV_TOOLS, "include/generated"),
+		path.join(SPIRV_HEADERS, "include"),
+	}
+
+	defines {
+		"TINT_BUILD_GLSL_WRITER=0",
+		"TINT_BUILD_HLSL_WRITER=0",
+		"TINT_BUILD_MSL_WRITER=0",
+		"TINT_BUILD_NULL_WRITER=0",
+
+		"TINT_BUILD_SPV_READER=1",
+		"TINT_BUILD_SPV_WRITER=0",
+
+		"TINT_BUILD_WGSL_READER=0",
+		"TINT_BUILD_WGSL_WRITER=1",
+
+		"TINT_BUILD_IS_LINUX=1",
+		"TINT_BUILD_IS_MAC=0",
+		"TINT_BUILD_IS_WIN=0",
+
+		"TINT_ENABLE_IR_VALIDATION=0",
+	}
+
+	files {
+		path.join(TINT, "src/tint/lang/spirv/**.cc"),
+		path.join(TINT, "src/tint/lang/spirv/**.h"),
+		path.join(TINT, "src/tint/lang/wgsl/**.cc"),
+		path.join(TINT, "src/tint/lang/wgsl/**.h"),
+	}
+
+	configuration { "osx*" }
+		buildoptions {
+			"-Wno-unknown-warning-option",
+		}
+
+project "tint-api"
+	kind "StaticLib"
+
+	includedirs {
+		path.join(TINT),
+		path.join(TINT, "src/tint"),
+		path.join(TINT, "third_party/protobuf/src"),
+		path.join(TINT, "third_party/abseil-cpp"),
+		path.join(SPIRV_TOOLS),
+		path.join(SPIRV_TOOLS, "include"),
+		path.join(SPIRV_TOOLS, "include/generated"),
+		path.join(SPIRV_HEADERS, "include"),
+	}
+
+	defines {
+		"TINT_BUILD_GLSL_WRITER=0",
+		"TINT_BUILD_HLSL_WRITER=0",
+		"TINT_BUILD_MSL_WRITER=0",
+		"TINT_BUILD_NULL_WRITER=0",
+
+		"TINT_BUILD_SPV_READER=1",
+		"TINT_BUILD_SPV_WRITER=0",
+
+		"TINT_BUILD_WGSL_READER=0",
+		"TINT_BUILD_WGSL_WRITER=1",
+
+		"TINT_BUILD_IS_LINUX=1",
+		"TINT_BUILD_IS_MAC=0",
+		"TINT_BUILD_IS_WIN=0",
+
+		"TINT_ENABLE_IR_VALIDATION=0",
+	}
+
+	files {
+		path.join(TINT, "src/tint/api/**.cc"),
+		path.join(TINT, "src/tint/api/**.h"),
+	}
+
+	configuration { "osx*" }
+		buildoptions {
+			"-Wno-unknown-warning-option",
+		}
 
 project "spirv-opt"
 	kind "StaticLib"
@@ -43,8 +180,6 @@ project "spirv-opt"
 		path.join(SPIRV_TOOLS, "source/disassemble.cpp"),
 		path.join(SPIRV_TOOLS, "source/disassemble.h"),
 		path.join(SPIRV_TOOLS, "source/enum_set.h"),
-		path.join(SPIRV_TOOLS, "source/enum_string_mapping.cpp"),
-		path.join(SPIRV_TOOLS, "source/enum_string_mapping.h"),
 		path.join(SPIRV_TOOLS, "source/ext_inst.cpp"),
 		path.join(SPIRV_TOOLS, "source/ext_inst.h"),
 		path.join(SPIRV_TOOLS, "source/extensions.cpp"),
@@ -78,10 +213,14 @@ project "spirv-opt"
 		path.join(SPIRV_TOOLS, "source/spirv_validator_options.h"),
 		path.join(SPIRV_TOOLS, "source/table.cpp"),
 		path.join(SPIRV_TOOLS, "source/table.h"),
+		path.join(SPIRV_TOOLS, "source/table2.cpp"),
+		path.join(SPIRV_TOOLS, "source/table2.h"),
 		path.join(SPIRV_TOOLS, "source/text.cpp"),
 		path.join(SPIRV_TOOLS, "source/text.h"),
 		path.join(SPIRV_TOOLS, "source/text_handler.cpp"),
 		path.join(SPIRV_TOOLS, "source/text_handler.h"),
+		path.join(SPIRV_TOOLS, "source/to_string.cpp"),
+		path.join(SPIRV_TOOLS, "source/to_string.h"),
 		path.join(SPIRV_TOOLS, "source/util/bit_vector.cpp"),
 		path.join(SPIRV_TOOLS, "source/util/bit_vector.h"),
 		path.join(SPIRV_TOOLS, "source/util/bitutils.h"),
@@ -161,6 +300,13 @@ project "spirv-cross"
 	configuration { "mingw* or linux* or osx*" }
 		buildoptions {
 			"-Wno-type-limits",
+		}
+
+
+	configuration { "osx*" }
+		buildoptions {
+			"-Wno-deprecated-this-capture",
+			"-Wno-nan-infinity-disabled",
 		}
 
 	configuration {}
@@ -448,6 +594,10 @@ project "glsl-optimizer"
 		path.join(GLSL_OPTIMIZER, "src/glsl/builtin_stubs.cpp"),
 	}
 
+	removeflags {
+		"FloatFast",	-- clang 17 has issues errors originating in glsl-optimizer when float optimizations are enabled
+	}
+
 	configuration { "Release" }
 		flags {
 			"Optimize",
@@ -560,7 +710,7 @@ project "shaderc"
 		path.join(BIMG_DIR, "include"),
 		path.join(BGFX_DIR, "include"),
 
-		path.join(BGFX_DIR, "3rdparty/dxsdk/include"),
+		path.join(BGFX_DIR, "3rdparty/directx-headers/include/directx"),
 
 		FCPP_DIR,
 
@@ -574,6 +724,9 @@ project "shaderc"
 		SPIRV_CROSS,
 
 		path.join(SPIRV_TOOLS, "include"),
+
+		path.join(TINT),
+		path.join(TINT, "src"),
 	}
 
 	links {
@@ -582,6 +735,9 @@ project "shaderc"
 		"glsl-optimizer",
 		"spirv-opt",
 		"spirv-cross",
+		"tint-api",
+		"tint-lang",
+		"tint-core",
 	}
 
 	using_bx()
@@ -614,6 +770,15 @@ project "shaderc"
 	configuration { "osx* or linux*" }
 		links {
 			"pthread",
+		}
+
+	-- Linux/macOS: d3d4linux for legacy HLSL (SM 5.0)
+	-- Linux only: directx-headers for DXIL (SM 6.0+, no macOS DXC library available)
+	configuration { "linux* or osx*" }
+		includedirs {
+			path.join(D3D4LINUX, "include"),
+			path.join(BGFX_DIR, "3rdparty/directx-headers/include"),
+			path.join(BGFX_DIR, "3rdparty/directx-headers/include/wsl/stubs"),
 		}
 
 	configuration {}

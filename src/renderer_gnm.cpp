@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2024 Branimir Karadzic. All rights reserved.
+ * Copyright 2011-2026 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
@@ -26,6 +26,10 @@ BGFX_DECLARE_EMBEDDED_SHADER(fs_clear4);
 BGFX_DECLARE_EMBEDDED_SHADER(fs_clear5);
 BGFX_DECLARE_EMBEDDED_SHADER(fs_clear6);
 BGFX_DECLARE_EMBEDDED_SHADER(fs_clear7);
+BGFX_DECLARE_EMBEDDED_SHADER(cs_mipgen_pow2);
+BGFX_DECLARE_EMBEDDED_SHADER(cs_mipgen_oddx);
+BGFX_DECLARE_EMBEDDED_SHADER(cs_mipgen_oddy);
+BGFX_DECLARE_EMBEDDED_SHADER(cs_mipgen_oddxy);
 
 #undef BGFX_DECLARE_EMBEDDED_SHADER
 

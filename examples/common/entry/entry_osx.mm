@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2024 Branimir Karadzic. All rights reserved.
+ * Copyright 2011-2026 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
@@ -9,9 +9,8 @@
 
 #import <Cocoa/Cocoa.h>
 
-#include <bgfx/platform.h>
+#include <bgfx/bgfx.h>
 
-#include <bx/uint32_t.h>
 #include <bx/thread.h>
 #include <bx/os.h>
 #include <bx/handlealloc.h>
@@ -65,7 +64,8 @@ namespace entry
 					char path[PATH_MAX];
 					if (CFURLGetFileSystemRepresentation(resourcesURL, TRUE, (UInt8*)path, PATH_MAX) )
 					{
-						chdir(path);
+						// This breaks console apps, but it's not needed on windowed.
+						//chdir(path);
 					}
 
 					CFRelease(resourcesURL);
@@ -500,7 +500,7 @@ namespace entry
 			mte.m_argv = _argv;
 
 			bx::Thread thread;
-			thread.init(mte.threadFunc, &mte);
+			thread.init(mte.threadFunc, &mte, 0, "Entry Thread");
 
 			WindowHandle handle = { 0 };
 			NSRect contentRect = [m_window[0] contentRectForFrameRect: m_windowFrame];
