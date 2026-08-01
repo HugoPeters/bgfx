@@ -7120,6 +7120,7 @@ VK_DESTROY
 
 		// the spec guarantees that at least one of D24S8 and D32FS8 is supported
 		VkFormat depthFormat = VK_FORMAT_D32_SFLOAT_S8_UINT;
+		depthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
 
 		if (g_caps.formats[m_depthFormat] & requiredCaps)
 		{
