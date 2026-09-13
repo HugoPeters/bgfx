@@ -12,6 +12,8 @@
 
 namespace bgfx
 {
+	struct Encoder; 
+	
 	static const uint16_t kInvalidHandle = UINT16_MAX;
 
 	BGFX_HANDLE(DynamicIndexBufferHandle)

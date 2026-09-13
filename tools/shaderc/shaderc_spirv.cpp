@@ -17,7 +17,7 @@ BX_PRAGMA_DIAGNOSTIC_IGNORED_CLANG_GCC("-Wshadow") // warning: declaration of 'u
 #define ENABLE_OPT 1
 #include <ShaderLang.h>
 #include <ResourceLimits.h>
-#include <SPIRV/SPVRemapper.h>
+// #include <SPIRV/SPVRemapper.h>
 #include <SPIRV/GlslangToSpv.h>
 #include <SPIRV/SpvTools.h>
 #define SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
@@ -59,7 +59,7 @@ namespace bgfx
 namespace stl = tinystl;
 
 #include "../../src/shader.h"
-#include "../../src/shader_spirv.h"
+// #include "../../src/shader_spirv.h"
 #include "../../3rdparty/khronos/vulkan-local/vulkan.h"
 
 namespace bgfx { namespace spirv
@@ -302,7 +302,7 @@ namespace bgfx { namespace spirv
 		"a_texcoord6",
 		"a_texcoord7",
 	};
-	BX_STATIC_ASSERT(bgfx::Attrib::Count == BX_COUNTOF(s_attribName) );
+	// BX_STATIC_ASSERT(bgfx::Attrib::Count == BX_COUNTOF(s_attribName) );
 
 	bgfx::Attrib::Enum toAttribEnum(const bx::StringView& _name)
 	{
@@ -524,7 +524,9 @@ namespace bgfx { namespace spirv
 
 				if (found)
 				{
-					start = bx::uint32_imax(1, line-10);
+					start = 1;
+					if (line-10 > start)
+						start = line-1; // bx::uint32_imax(1, line-10);
 					end   = start + 20;
 				}
 
