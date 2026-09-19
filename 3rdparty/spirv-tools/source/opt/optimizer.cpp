@@ -127,7 +127,7 @@ Optimizer& Optimizer::RegisterLegalizationPasses(bool preserve_interface) {
           // Remove unreachable block so that merge return works.
           .RegisterPass(CreateDeadBranchElimPass())
           // Merge the returns so we can inline.
-          .RegisterPass(CreateMergeReturnPass())
+          // .RegisterPass(CreateMergeReturnPass())
           // Make sure uses and definitions are in the same function.
           .RegisterPass(CreateInlineExhaustivePass())
           // Make private variable function scope
@@ -183,7 +183,7 @@ Optimizer& Optimizer::RegisterLegalizationPasses() {
 Optimizer& Optimizer::RegisterPerformancePasses(bool preserve_interface) {
   return RegisterPass(CreateWrapOpKillPass())
       .RegisterPass(CreateDeadBranchElimPass())
-      .RegisterPass(CreateMergeReturnPass())
+      // .RegisterPass(CreateMergeReturnPass())
       .RegisterPass(CreateInlineExhaustivePass())
       .RegisterPass(CreateEliminateDeadFunctionsPass())
       .RegisterPass(CreateAggressiveDCEPass(preserve_interface))
@@ -234,7 +234,7 @@ Optimizer& Optimizer::RegisterPerformancePasses() {
 Optimizer& Optimizer::RegisterSizePasses(bool preserve_interface) {
   return RegisterPass(CreateWrapOpKillPass())
       .RegisterPass(CreateDeadBranchElimPass())
-      .RegisterPass(CreateMergeReturnPass())
+      // .RegisterPass(CreateMergeReturnPass())
       .RegisterPass(CreateInlineExhaustivePass())
       .RegisterPass(CreateEliminateDeadFunctionsPass())
       .RegisterPass(CreatePrivateToLocalPass())
@@ -382,7 +382,7 @@ bool Optimizer::RegisterPassFromFlag(const std::string& flag,
   } else if (pass_name == "merge-blocks") {
     RegisterPass(CreateBlockMergePass());
   } else if (pass_name == "merge-return") {
-    RegisterPass(CreateMergeReturnPass());
+    // RegisterPass(CreateMergeReturnPass());
   } else if (pass_name == "eliminate-dead-branches") {
     RegisterPass(CreateDeadBranchElimPass());
   } else if (pass_name == "eliminate-dead-functions") {
@@ -465,6 +465,8 @@ bool Optimizer::RegisterPassFromFlag(const std::string& flag,
     RegisterPass(CreateReplaceInvalidOpcodePass());
   } else if (pass_name == "convert-relaxed-to-half") {
     RegisterPass(CreateConvertRelaxedToHalfPass());
+  } else if (pass_name == "convert-to-untyped") {
+    RegisterPass(CreateConvertToUntypedPass());
   } else if (pass_name == "relax-float-ops") {
     RegisterPass(CreateRelaxFloatOpsPass());
   } else if (pass_name == "simplify-instructions") {
@@ -719,7 +721,8 @@ bool Optimizer::Run(const uint32_t* original_binary,
       !context->module()->ContainsDebugInfo()) {
     std::vector<uint32_t> optimized_binary_with_nop;
     context->module()->ToBinary(&optimized_binary_with_nop,
-                                /* skip_nop = */ false);
+                                /* skip_nop = */ false,
+                                /* filter_duplicate_decorations = */ false);
     assert(optimized_binary_with_nop.size() == original_binary_size &&
            "Binary size unexpectedly changed despite the optimizer saying "
            "there was no change");
@@ -1052,6 +1055,11 @@ Optimizer::PassToken CreateUpgradeMemoryModelPass() {
 Optimizer::PassToken CreateConvertRelaxedToHalfPass() {
   return MakeUnique<Optimizer::PassToken::Impl>(
       MakeUnique<opt::ConvertToHalfPass>());
+}
+
+Optimizer::PassToken CreateConvertToUntypedPass() {
+  return MakeUnique<Optimizer::PassToken::Impl>(
+      MakeUnique<opt::ConvertToUntyped>());
 }
 
 Optimizer::PassToken CreateRelaxFloatOpsPass() {

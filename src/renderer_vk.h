@@ -189,6 +189,7 @@
 			VK_IMPORT_DEVICE_FUNC(false, vkCmdDispatchIndirect);                      \
 			VK_IMPORT_DEVICE_FUNC(false, vkCmdBindPipeline);                          \
 			VK_IMPORT_DEVICE_FUNC(false, vkCmdSetStencilReference);                   \
+			VK_IMPORT_DEVICE_FUNC(false, vkCmdSetStencilCompareMask);                 \
 			VK_IMPORT_DEVICE_FUNC(false, vkCmdSetStencilWriteMask);                   \
 			VK_IMPORT_DEVICE_FUNC(false, vkCmdSetBlendConstants);                     \
 			VK_IMPORT_DEVICE_FUNC(false, vkCmdSetScissor);                            \
@@ -395,9 +396,9 @@ VK_DESTROY_FUNC(DescriptorSet);
 		{
 		}
 
-		static constexpr uint16_t MAX_ENTRIES = 1 << 10;
-		DeviceMemoryAllocationVK entries[MAX_ENTRIES];
-		bx::HandleAllocLruT<MAX_ENTRIES> lru;
+		static constexpr uint16_t kMaxEntries = 1 << 10;
+		DeviceMemoryAllocationVK entries[kMaxEntries];
+		bx::HandleAllocLruT<kMaxEntries> lru;
 		uint64_t totalSizeCached;
 
 		void recycle(DeviceMemoryAllocationVK &_alloc);
@@ -405,10 +406,6 @@ VK_DESTROY_FUNC(DescriptorSet);
 		void evictAll();
 	};
 
-	/** A Buffer used for moving data from main memory to GPU memory.
-	 * This can either be an independently allocated memory region, or a sub-region
-	 * of the scratch staging buffer for the frame-in-flight.
-	 */
 	struct StagingBufferVK
 	{
 		VkBuffer m_buffer;
@@ -416,7 +413,7 @@ VK_DESTROY_FUNC(DescriptorSet);
 
 		uint8_t* m_data;
 		uint32_t m_size;
-		uint32_t m_offset; // Offset into the bound buffer (not the device memory!)
+		uint32_t m_offset;
 		bool     m_isFromScratch;
 	};
 
@@ -538,8 +535,7 @@ VK_DESTROY_FUNC(DescriptorSet);
 	struct ShaderVK
 	{
 		ShaderVK()
-			: m_code(NULL)
-			, m_module(VK_NULL_HANDLE)
+			: m_module(VK_NULL_HANDLE)
 			, m_constantBuffer(NULL)
 			, m_hash(0)
 			, m_numUniforms(0)
@@ -553,7 +549,6 @@ VK_DESTROY_FUNC(DescriptorSet);
 		void create(const Memory* _mem);
 		void destroy();
 
-		const Memory* m_code;
 		VkShaderModule m_module;
 		UniformBuffer* m_constantBuffer;
 
@@ -685,8 +680,9 @@ VK_DESTROY_FUNC(DescriptorSet);
 		void create(VkImage _image, uint32_t _width, uint32_t _height, TextureFormat::Enum _format);
 		void destroy();
 		uint32_t pitch(uint8_t _mip = 0) const;
+		uint32_t stagingSize(VkImageAspectFlags _aspect, uint8_t _mip = 0) const;
 		void copyImageToBuffer(VkCommandBuffer _commandBuffer, VkBuffer _buffer, VkImageLayout _layout, VkImageAspectFlags _aspect, uint16_t _layer = 0, uint8_t _mip = 0) const;
-		void readback(VkDeviceMemory _memory, VkDeviceSize _offset, void* _data, uint8_t _mip = 0) const;
+		void readback(VkDeviceMemory _memory, VkDeviceSize _offset, void* _data, VkImageAspectFlags _aspect, uint8_t _mip = 0) const;
 
 		VkImage  m_image;
 		uint32_t m_width;
@@ -727,7 +723,11 @@ VK_DESTROY_FUNC(DescriptorSet);
 		void copyBufferToTexture(VkCommandBuffer _commandBuffer, VkBuffer _stagingBuffer, uint32_t _bufferImageCopyCount, VkBufferImageCopy* _bufferImageCopy);
 		void setState(VkCommandBuffer _commandBuffer, VkImageLayout _newImageLayout, bool _singleMsaaImage = false);
 
-		VkResult createView(uint32_t _layer, uint32_t _numLayers, uint32_t _mip, uint32_t _numMips, VkImageViewType _type, VkImageAspectFlags _aspectMask, bool _renderTarget, ::VkImageView* _view) const;
+		VkResult createView(uint32_t _layer, uint32_t _numLayers, uint32_t _mip, uint32_t _numMips, VkImageViewType _type, VkImageAspectFlags _aspectMask, bool _renderTarget, ::VkImageView* _view, VkFormat _format = VK_FORMAT_UNDEFINED) const;
+
+		VkFormat getViewFormat(uint32_t _flags, uint32_t _bit) const;
+
+		void resolveRenderPass(VkCommandBuffer _commandBuffer, VkFormat _format, uint32_t _layer, uint32_t _numLayers, uint32_t _mip);
 
 		void*    m_directAccessPtr;
 		uint64_t m_flags;
@@ -771,19 +771,23 @@ VK_DESTROY_FUNC(DescriptorSet);
 	{
 		SwapChainVK()
 			: m_nwh(NULL)
+			, m_vsync(false)
 			, m_swapChain(VK_NULL_HANDLE)
 			, m_lastImageRenderedSemaphore(VK_NULL_HANDLE)
 			, m_lastImageAcquiredSemaphore(VK_NULL_HANDLE)
+			, m_needPresent(false)
 			, m_backBufferDepthStencilImageView(VK_NULL_HANDLE)
+			, m_depthStencilFormat(VK_FORMAT_UNDEFINED)
+			, m_depthStencilAspect(0)
 			, m_backBufferColorMsaaImageView(VK_NULL_HANDLE)
 		{
 		}
 
-		VkResult create(VkCommandBuffer _commandBuffer, void* _nwh, const Resolution& _resolution);
+		VkResult create(VkCommandBuffer _commandBuffer, void* _nwh, const SwapChain& _desc);
 
 		void destroy();
 
-		void update(VkCommandBuffer _commandBuffer, void* _nwh, const Resolution& _resolution);
+		void update(VkCommandBuffer _commandBuffer, void* _nwh, const SwapChain& _desc);
 
 		VkResult createSurface();
 		VkResult createSwapChain();
@@ -809,7 +813,9 @@ VK_DESTROY_FUNC(DescriptorSet);
 		VkSwapchainCreateInfoKHR m_sci;
 
 		void* m_nwh;
-		Resolution m_resolution;
+		SwapChain m_desc;
+
+		bool m_vsync;
 
 		TextureFormat::Enum m_colorFormat;
 		TextureFormat::Enum m_depthFormat;
@@ -840,6 +846,8 @@ VK_DESTROY_FUNC(DescriptorSet);
 
 		TextureVK   m_backBufferDepthStencil;
 		VkImageView m_backBufferDepthStencilImageView;
+		VkFormat           m_depthStencilFormat;
+		VkImageAspectFlags m_depthStencilAspect;
 
 		TextureVK     m_backBufferColorMsaa;
 		VkImageView   m_backBufferColorMsaaImageView;
@@ -861,14 +869,15 @@ VK_DESTROY_FUNC(DescriptorSet);
 			, m_nwh(NULL)
 			, m_needPresent(false)
 			, m_framebuffer(VK_NULL_HANDLE)
+			, m_currentFramebuffer(VK_NULL_HANDLE)
 		{
 		}
 
 		void create(uint8_t _num, const Attachment* _attachment);
-		VkResult create(uint16_t _denseIdx, void* _nwh, uint32_t _width, uint32_t _height, TextureFormat::Enum _format = TextureFormat::Count, TextureFormat::Enum _depthFormat = TextureFormat::Count);
+		VkResult create(uint16_t _denseIdx, const SwapChain& _desc);
 		uint16_t destroy();
 
-		void update(VkCommandBuffer _commandBuffer, const Resolution& _resolution);
+		void update(VkCommandBuffer _commandBuffer, const SwapChain& _desc);
 
 		void preReset();
 		void postReset();
@@ -883,6 +892,11 @@ VK_DESTROY_FUNC(DescriptorSet);
 		void markDirty() { m_needResolve = true; }
 
 		bool isRenderable() const;
+
+		bool isSwapChain() const
+		{
+			return NULL != m_nwh;
+		}
 
 		TextureHandle m_texture[BGFX_CONFIG_MAX_FRAME_BUFFER_ATTACHMENTS];
 		TextureHandle m_depth;

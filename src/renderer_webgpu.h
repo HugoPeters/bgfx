@@ -92,7 +92,7 @@
 		WGPU_IMPORT_FUNC(false, CommandEncoderResolveQuerySet);                     \
 		WGPU_IMPORT_FUNC(false, CommandEncoderSetLabel);                            \
 		WGPU_IGNORE_____(false, CommandEncoderWriteBuffer);                         \
-		WGPU_IMPORT_FUNC(false, CommandEncoderWriteTimestamp);                      \
+		WGPU_IGNORE_____(false, CommandEncoderWriteTimestamp);                      \
 		WGPU_IGNORE_____(false, CommandEncoderAddRef);                              \
 		WGPU_IMPORT_FUNC(false, CommandEncoderRelease);                             \
 		/* */                                                                       \
@@ -105,7 +105,7 @@
 		WGPU_IMPORT_FUNC(false, ComputePassEncoderSetBindGroup);                    \
 		WGPU_IMPORT_FUNC(false, ComputePassEncoderSetLabel);                        \
 		WGPU_IMPORT_FUNC(false, ComputePassEncoderSetPipeline);                     \
-		WGPU_IMPORT_FUNC(false, ComputePassEncoderWriteTimestamp);                  \
+		WGPU_IGNORE_____(false, ComputePassEncoderWriteTimestamp);                  \
 		WGPU_IGNORE_____(false, ComputePassEncoderAddRef);                          \
 		WGPU_IMPORT_FUNC(false, ComputePassEncoderRelease);                         \
 		/* */                                                                       \
@@ -238,7 +238,7 @@
 		WGPU_IMPORT_FUNC(false, RenderPassEncoderSetStencilReference);              \
 		WGPU_IMPORT_FUNC(false, RenderPassEncoderSetVertexBuffer);                  \
 		WGPU_IMPORT_FUNC(false, RenderPassEncoderSetViewport);                      \
-		WGPU_IMPORT_FUNC(false, RenderPassEncoderWriteTimestamp);                   \
+		WGPU_IGNORE_____(false, RenderPassEncoderWriteTimestamp);                   \
 		WGPU_IGNORE_____(false, RenderPassEncoderAddRef);                           \
 		WGPU_IMPORT_FUNC(false, RenderPassEncoderRelease);                          \
 		/* */                                                                       \
@@ -517,6 +517,7 @@ namespace wgpu {
 		ShaderWGPU()
 			: m_code(NULL)
 			, m_module(NULL)
+			, m_moduleBgra8(NULL)
 			, m_constantBuffer(NULL)
 			, m_hash(0)
 			, m_numUniforms(0)
@@ -527,8 +528,11 @@ namespace wgpu {
 		void create(const Memory* _mem);
 		void destroy();
 
+		WGPUShaderModule getModule(bool _bgra8Storage) const;
+
 		const Memory* m_code;
 		WGPUShaderModule m_module;
+		mutable WGPUShaderModule m_moduleBgra8;
 		UniformBuffer* m_constantBuffer;
 
 		PredefinedUniform m_predefined[PredefinedUniform::Count];
@@ -630,7 +634,9 @@ namespace wgpu {
 
 		TextureWGPU()
 			: m_texture(NULL)
-			, m_textureResolve(NULL)
+			, m_textureMsaa(NULL)
+			, m_textureMsaaAlt(NULL)
+			, m_msaaCount(1)
 			, m_type(Texture2D)
 		{
 		}
@@ -641,11 +647,14 @@ namespace wgpu {
 		void clear(uint8_t _mip, uint8_t _numMips, uint16_t _layer, uint16_t _numLayers);
 
 		WGPUSampler getSamplerState(uint32_t _samplerFlags) const;
-		WGPUTextureView getTextureView(uint8_t _baseMipLevel, uint8_t _mipLevelCount, bool _storage, uint16_t _baseArrayLayer = 0, uint16_t _arrayLayerCount = UINT16_MAX, bool _force2DArray = false) const;
+		WGPUTextureView getTextureView(uint8_t _baseMipLevel, uint8_t _mipLevelCount, bool _storage, uint16_t _baseArrayLayer = 0, uint16_t _arrayLayerCount = UINT16_MAX, WGPUTextureViewDimension _viewDimension = WGPUTextureViewDimension_Undefined, bool _stencil = false, WGPUTextureFormat _format = WGPUTextureFormat_Undefined) const;
+		WGPUTextureFormat getViewFormat(uint32_t _flags, uint32_t _bit) const;
 
 		WGPUTexture m_texture;
-		WGPUTexture m_textureResolve;
+		WGPUTexture m_textureMsaa;
+		WGPUTexture m_textureMsaaAlt;
 		WGPUTextureViewDimension m_viewDimension;
+		WGPUTextureFormat m_fmt;
 
 		uint64_t m_flags;
 		uint32_t m_width;
@@ -653,6 +662,7 @@ namespace wgpu {
 		uint32_t m_depth;
 		uint32_t m_numLayers;
 		uint32_t m_numSides;
+		uint32_t m_msaaCount;
 		uint8_t  m_type;
 		uint8_t  m_requestedFormat;
 		uint8_t  m_textureFormat;
@@ -664,31 +674,39 @@ namespace wgpu {
 		SwapChainWGPU()
 			: m_nwh(NULL)
 			, m_surface(NULL)
+			, m_texture(NULL)
 			, m_textureView(NULL)
 			, m_msaaTextureView(NULL)
 			, m_depthStencilView(NULL)
+			, m_viewFormat(WGPUTextureFormat_Undefined)
+			, m_readable(false)
 		{
 		}
 
-		bool create(void* _nwh, const Resolution& _resolution);
+		bool create(void* _nwh, const SwapChain& _desc);
 		void destroy();
-		void update(void* _nwh, const Resolution& _resolution);
+		void update(void* _nwh, const SwapChain& _desc);
 
 		bool createSurface(void* _nwh);
 
-		bool configure(const Resolution& _resolution);
+		bool configure(const SwapChain& _desc);
+		WGPUTextureView createTextureView();
 		void present();
 
 		void* m_nwh;
-		Resolution m_resolution;
+		SwapChain m_desc;
 		WGPUSurfaceConfiguration m_surfaceConfig;
 
 		WGPUSurface m_surface;
+		WGPUTexture m_texture;
 		WGPUTextureView m_textureView;
 		WGPUTextureView m_msaaTextureView;
 		WGPUTextureView m_depthStencilView;
 
+		WGPUTextureFormat m_viewFormat;
+
 		uint8_t m_formatDepthStencil;
+		bool m_readable;
 	};
 
 	struct FrameBufferWGPU
@@ -696,21 +714,24 @@ namespace wgpu {
 		FrameBufferWGPU()
 			: m_depth({ kInvalidHandle })
 			, m_depthStencilView(NULL)
+			, m_readOnlyDepth(false)
+			, m_readOnlyStencil(false)
 			, m_denseIdx(kInvalidHandle)
 			, m_numColorAttachments(0)
 			, m_numAttachments(0)
+			, m_msaaCount(1)
 			, m_needPresent(false)
 		{
 		}
 
 		void create(uint8_t _num, const Attachment* _attachment);
-		bool create(uint16_t _denseIdx, void* _nwh, uint32_t _width, uint32_t _height, TextureFormat::Enum _colorFormat, TextureFormat::Enum _depthFormat = TextureFormat::Count);
+		bool create(uint16_t _denseIdx, const SwapChain& _desc);
 		uint16_t destroy();
 
 		void preReset();
 		void postReset();
 
-		void update(const Resolution& _resolution);
+		void update(const SwapChain& _desc);
 
 		void present();
 
@@ -726,8 +747,13 @@ namespace wgpu {
 
 		Attachment      m_attachment[BGFX_CONFIG_MAX_FRAME_BUFFER_ATTACHMENTS];
 		WGPUTextureView m_textureView[BGFX_CONFIG_MAX_FRAME_BUFFER_ATTACHMENTS];
+		WGPUTextureView m_resolveView[BGFX_CONFIG_MAX_FRAME_BUFFER_ATTACHMENTS];
+		WGPUTextureFormat m_colorFormat[BGFX_CONFIG_MAX_FRAME_BUFFER_ATTACHMENTS];
 		WGPUTextureView m_depthStencilView;
 		uint8_t m_formatDepthStencil;
+
+		bool m_readOnlyDepth;
+		bool m_readOnlyStencil;
 
 		uint16_t m_denseIdx;
 		uint8_t m_numColorAttachments;
@@ -735,6 +761,7 @@ namespace wgpu {
 
 		uint32_t m_width;
 		uint32_t m_height;
+		uint32_t m_msaaCount;
 
 		SwapChainWGPU m_swapChain;
 		bool m_needPresent;
@@ -775,7 +802,15 @@ namespace wgpu {
 	struct TimerQueryWGPU
 	{
 		TimerQueryWGPU()
-			: m_control(BX_COUNTOF(m_result) )
+			: m_frequency(UINT64_C(1000000000) )
+			, m_querySet(NULL)
+			, m_resolve(NULL)
+			, m_readback(NULL)
+			, m_control(BX_COUNTOF(m_result) )
+			, m_resolvedFrameNum(0)
+			, m_supported(false)
+			, m_resolved(false)
+			, m_mapPending(false)
 		{
 		}
 
@@ -783,12 +818,16 @@ namespace wgpu {
 		void shutdown();
 		uint32_t begin(uint32_t _resultIdx, uint32_t _frameNum);
 		void end(uint32_t _idx);
+		void resolve(uint32_t _frameNum);
+		void readResultsAsync();
+		void consumeResults();
+
+		void writeTimestamp(uint32_t _index);
 
 		struct Query
 		{
 			uint32_t m_resultIdx;
 			uint32_t m_frameNum;
-			uint64_t m_fence;
 			bool     m_ready;
 		};
 
@@ -808,16 +847,25 @@ namespace wgpu {
 			uint32_t m_frameNum;
 		};
 
+		static constexpr uint32_t kNumTimestamps = (BGFX_CONFIG_MAX_VIEWS+1)*2;
+		static constexpr uint64_t kBufferSize    = kNumTimestamps * sizeof(uint64_t);
+
 		uint64_t m_frequency;
 
 		Result m_result[BGFX_CONFIG_MAX_VIEWS+1];
-		Query m_query[BGFX_CONFIG_MAX_VIEWS*4];
+		Query m_query[BGFX_CONFIG_MAX_VIEWS+1];
 
 		WGPUQuerySet m_querySet;
 		WGPUBuffer m_resolve;
 		WGPUBuffer m_readback;
 
 		bx::RingBufferControl m_control;
+
+		uint32_t m_resolvedFrameNum;
+
+		bool m_supported;
+		bool m_resolved;
+		bool m_mapPending;
 	};
 
 	struct OcclusionQueryWGPU

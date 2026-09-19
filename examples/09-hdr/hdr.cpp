@@ -133,12 +133,12 @@ public:
 		bgfx::Init init;
 		init.type     = args.m_type;
 		init.vendorId = args.m_pciId;
-		init.platformData.nwh  = entry::getNativeWindowHandle(entry::kDefaultWindowHandle);
-		init.platformData.ndt  = entry::getNativeDisplayHandle();
+		init.swapChain.nwh     = entry::getNativeWindowHandle(entry::kDefaultWindowHandle);
+		init.swapChain.ndt     = entry::getNativeDisplayHandle();
 		init.platformData.type = entry::getNativeWindowHandleType();
-		init.resolution.width  = m_width;
-		init.resolution.height = m_height;
-		init.resolution.reset  = m_reset;
+		init.swapChain.width  = m_width;
+		init.swapChain.height = m_height;
+		init.reset  = m_reset;
 		bgfx::init(init);
 
 		// Enable m_debug text.
@@ -195,15 +195,8 @@ public:
 		bgfx::setName(m_blur, "Blur");
 
 		m_lumBgra8 = 0;
-		if ( (BGFX_CAPS_TEXTURE_BLIT|BGFX_CAPS_TEXTURE_READ_BACK) == (bgfx::getCaps()->supported & (BGFX_CAPS_TEXTURE_BLIT|BGFX_CAPS_TEXTURE_READ_BACK) ) )
-		{
-			m_rb = bgfx::createTexture2D(1, 1, false, 1, bgfx::TextureFormat::BGRA8, BGFX_TEXTURE_BLIT_DST|BGFX_TEXTURE_READ_BACK);
-			bgfx::setName(m_rb, "Read Back Texture");
-		}
-		else
-		{
-			m_rb.idx = bgfx::kInvalidHandle;
-		}
+		m_rb = bgfx::createTexture2D(1, 1, false, 1, bgfx::TextureFormat::BGRA8, BGFX_TEXTURE_BLIT_DST|BGFX_TEXTURE_READ_BACK);
+		bgfx::setName(m_rb, "Read Back Texture");
 
 		// Imgui.
 		imguiCreate();
@@ -580,8 +573,8 @@ public:
 
 			if (bgfx::isValid(m_rb) )
 			{
-				bgfx::blit(hdrHBlurTonemap, m_rb, 0, 0, bgfx::getTexture(m_lum[4]) );
-				bgfx::readTexture(m_rb, &m_lumBgra8);
+				bgfx::blit(hdrHBlurTonemap, { .handle = m_rb }, { .handle = bgfx::getTexture(m_lum[4]) });
+				bgfx::read({ .handle = m_rb }, &m_lumBgra8);
 			}
 
 			// Advance to next frame. Rendering thread will be kicked to

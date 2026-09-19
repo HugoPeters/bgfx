@@ -22,7 +22,7 @@ namespace bgfx
 		bool hasItem(uint16_t _view) const
 		{
 			return m_item < m_frame->m_numBlitItems
-				&& m_key.m_view <= _view
+				&& m_key.m_view <= m_frame->m_viewOrder[_view]
 				;
 		}
 
@@ -38,7 +38,7 @@ namespace bgfx
 
 		const Frame* m_frame;
 		BlitKey  m_key;
-		uint16_t m_item;
+		uint32_t m_item;
 	};
 
 	struct UniformCacheItem
@@ -60,7 +60,7 @@ namespace bgfx
 		bool hasItem(uint16_t _view) const
 		{
 			return m_item < m_frame->m_uniformCacheFrame.m_numItems
-				&& m_key.m_view <= _view
+				&& m_key.m_view <= m_frame->m_viewOrder[_view]
 				;
 		}
 
@@ -98,22 +98,20 @@ namespace bgfx
 		void reset(Frame* _frame)
 		{
 			m_alphaRef = 0.0f;
+			m_ndcFixup = 1.0f;
 			m_invViewCached = UINT16_MAX;
 			m_invProjCached = UINT16_MAX;
 			m_invViewProjCached = UINT16_MAX;
 
 			m_view = m_viewTmp;
 
-			for (uint32_t ii = 0; ii < BGFX_CONFIG_MAX_VIEWS; ++ii)
+			for (uint32_t ii = 0, num = _frame->m_numUsedViews; ii < num; ++ii)
 			{
-				bx::memCopy(&m_view[ii].un.f4x4, &_frame->m_view[ii].m_view.un.f4x4, sizeof(Matrix4) );
-			}
-
-			for (uint32_t ii = 0; ii < BGFX_CONFIG_MAX_VIEWS; ++ii)
-			{
-				bx::float4x4_mul(&m_viewProj[ii].un.f4x4
-					, &m_view[ii].un.f4x4
-					, &_frame->m_view[ii].m_proj.un.f4x4
+				const uint16_t view = _frame->m_usedViews[ii];
+				bx::memCopy(&m_view[view].un.f4x4, &_frame->m_view[view].m_view.un.f4x4, sizeof(Matrix4) );
+				bx::float4x4_mul(&m_viewProj[view].un.f4x4
+					, &m_view[view].un.f4x4
+					, &_frame->m_view[view].m_proj.un.f4x4
 					);
 			}
 		}
@@ -150,6 +148,10 @@ namespace bgfx
 						float frect[4];
 						frect[0] = 1.0f/float(m_rect.m_width);
 						frect[1] = 1.0f/float(m_rect.m_height);
+						// .zw = the view's viewport depth range [minDepth, maxDepth], for
+						// shaders that clamp a written depth (WebGPU @builtin(frag_depth)).
+						frect[2] = _frame->m_view[_view].m_minDepth;
+						frect[3] = _frame->m_view[_view].m_maxDepth;
 
 						_renderer->setShaderUniform4f(flags
 							, predefined.m_loc
@@ -245,7 +247,7 @@ namespace bgfx
 
 				case PredefinedUniform::Model:
 					{
-						const Matrix4& model = frameCache.m_matrixCache.m_cache[_draw.m_startMatrix];
+						const Matrix4& model = frameCache.m_matrixCache.at(_draw.m_startMatrix);
 						_renderer->setShaderUniform4x4f(flags
 							, predefined.m_loc
 							, model.un.val
@@ -257,7 +259,7 @@ namespace bgfx
 				case PredefinedUniform::ModelView:
 					{
 						Matrix4 modelView;
-						const Matrix4& model = frameCache.m_matrixCache.m_cache[_draw.m_startMatrix];
+						const Matrix4& model = frameCache.m_matrixCache.at(_draw.m_startMatrix);
 						bx::model4x4_mul(&modelView.un.f4x4
 							, &model.un.f4x4
 							, &m_view[_view].un.f4x4
@@ -274,7 +276,7 @@ namespace bgfx
 					{
 						Matrix4 modelView;
 						Matrix4 invModelView;
-						const Matrix4& model = frameCache.m_matrixCache.m_cache[_draw.m_startMatrix];
+						const Matrix4& model = frameCache.m_matrixCache.at(_draw.m_startMatrix);
 						bx::model4x4_mul(&modelView.un.f4x4
 							, &model.un.f4x4
 							, &m_view[_view].un.f4x4
@@ -293,7 +295,7 @@ namespace bgfx
 				case PredefinedUniform::ModelViewProj:
 					{
 						Matrix4 modelViewProj;
-						const Matrix4& model = frameCache.m_matrixCache.m_cache[_draw.m_startMatrix];
+						const Matrix4& model = frameCache.m_matrixCache.at(_draw.m_startMatrix);
 						bx::model4x4_mul_viewproj4x4(&modelViewProj.un.f4x4
 							, &model.un.f4x4
 							, &m_viewProj[_view].un.f4x4
@@ -318,7 +320,13 @@ namespace bgfx
 
 				case PredefinedUniform::IndirectArgBase:
 					{
-						const float base[4] = { bx::bitsToFloat(_draw.m_startIndex), 0.0f, 0.0f, 0.0f };
+						const float base[4] =
+						{
+							bx::bitsToFloat(_draw.m_startIndex),
+							0.0f,
+							0.0f,
+							m_ndcFixup,
+						};
 						_renderer->setShaderUniform4f(flags
 							, predefined.m_loc
 							, base
@@ -342,6 +350,8 @@ namespace bgfx
 		Matrix4  m_invProj;
 		Matrix4  m_invViewProj;
 		float    m_alphaRef;
+		float    m_ndcFixup;
+
 		uint16_t m_invViewCached;
 		uint16_t m_invProjCached;
 		uint16_t m_invViewProjCached;
@@ -640,9 +650,11 @@ namespace bgfx
 			ChunkTy sbc;
 			static_cast<Derived*>(this)->createChunk(sbc);
 
-			const uint32_t lastChunk = bx::max(uint32_t(m_chunks.size()-1), 1);
-			const uint32_t at = UINT32_MAX == _at ? lastChunk : _at;
-			const uint32_t chunkIndex = at % bx::max(m_chunks.size(), 1);
+			const uint32_t numChunks  = uint32_t(m_chunks.size() );
+			const uint32_t chunkIndex = UINT32_MAX == _at
+				? numChunks
+				: bx::min(_at, numChunks)
+				;
 
 			m_chunkControl.resize(m_chunkSize);
 
